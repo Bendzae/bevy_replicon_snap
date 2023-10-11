@@ -8,8 +8,10 @@ use bevy_replicon::replicon_core::replication_rules::{
     DeserializeFn, RemoveComponentFn, SerializeFn,
 };
 use serde::de::DeserializeOwned;
+use std::collections::vec_deque::Iter;
 use std::collections::VecDeque;
 use std::fmt::Debug;
+use std::iter::Map;
 
 pub struct SnapshotInterpolationPlugin {
     pub max_tick_rate: u16,
@@ -127,6 +129,18 @@ impl<T: Event> PredictedEventHistory<T> {
         }
         self
     }
+
+    pub fn predict(
+        &mut self,
+        value: T,
+        tick: u32,
+        delta_time: f32,
+        latest_server_snapshot_tick: u32,
+    ) -> Iter<'_, EventSnapshot<T>> {
+        self.remove_stale(latest_server_snapshot_tick);
+        self.insert(value, tick, delta_time);
+        self.0.iter()
+    }
 }
 
 fn owner_prediction_init_system(
@@ -157,14 +171,11 @@ fn snapshot_buffer_init_system<T: Component + Interpolate + Clone>(
 }
 
 fn snapshot_interpolation_system<T: Component + Interpolate + Clone>(
-    mut q: Query<
-        (Entity, &mut T, &mut SnapshotBuffer<T>),
-        (With<Interpolated>, Without<Predicted>),
-    >,
+    mut q: Query<(&mut T, &mut SnapshotBuffer<T>), (With<Interpolated>, Without<Predicted>)>,
     time: Res<Time>,
     config: Res<InterpolationConfig>,
 ) {
-    for (e, mut component, mut snapshot_buffer) in q.iter_mut() {
+    for (mut component, mut snapshot_buffer) in q.iter_mut() {
         let buffer = &snapshot_buffer.buffer;
         let elapsed = snapshot_buffer.time_since_last_snapshot;
         if buffer.len() < 2 {
@@ -248,10 +259,6 @@ impl AppInterpolationExt for App {
     {
         let history: PredictedEventHistory<C> = PredictedEventHistory::new();
         self.insert_resource(history);
-        // self.add_systems(
-        //     Update,
-        //     predicted_event_system::<C>.run_if(resource_exists::<RenetClient>()),
-        // );
         self.add_client_event::<C>(policy)
     }
 }
