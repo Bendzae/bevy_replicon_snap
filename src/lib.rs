@@ -135,15 +135,8 @@ impl<T: Event> PredictedEventHistory<T> {
         self
     }
 
-    pub fn predict(
-        &mut self,
-        value: T,
-        tick: u32,
-        delta_time: f32,
-        latest_server_snapshot_tick: u32,
-    ) -> Iter<'_, EventSnapshot<T>> {
+    pub fn predict(&mut self, latest_server_snapshot_tick: u32) -> Iter<'_, EventSnapshot<T>> {
         self.remove_stale(latest_server_snapshot_tick);
-        self.insert(value, tick, delta_time);
         self.0.iter()
     }
 }
