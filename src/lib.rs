@@ -157,11 +157,18 @@ fn owner_prediction_init_system(
 }
 
 fn snapshot_buffer_init_system<T: Component + Interpolate + Clone>(
-    q_interpolated: Query<(Entity, &T), Added<OwnerPredicted>>,
+    q_interpolated: Query<(Entity, &T), Added<Interpolated>>,
+    q_owner_predicted: Query<(Entity, &T), Added<OwnerPredicted>>,
     mut commands: Commands,
     tick: Res<RepliconTick>,
 ) {
     for (e, initial_value) in q_interpolated.iter() {
+        let mut buffer = SnapshotBuffer::new();
+        buffer.insert(initial_value.clone(), tick.get());
+        commands.entity(e).insert(buffer);
+    }
+    // TODO: Query with OR?
+    for (e, initial_value) in q_owner_predicted.iter() {
         let mut buffer = SnapshotBuffer::new();
         buffer.insert(initial_value.clone(), tick.get());
         commands.entity(e).insert(buffer);
@@ -286,41 +293,5 @@ impl AppInterpolationExt for App {
         let history: PredictedEventHistory<C> = PredictedEventHistory::new();
         self.insert_resource(history);
         self.add_client_event::<C>(policy)
-    }
-}
-
-#[derive(Component, Serialize, Deserialize, Clone)]
-struct Test;
-
-impl Interpolate for Test {
-    fn interpolate(&self, other: Self, t: f32) -> Self {
-        todo!()
-    }
-}
-impl SnapDeserialize for Test {
-    fn snap_deserialize(
-        entity: &mut EntityMut,
-        _entity_map: &mut ServerEntityMap,
-        mut cursor: &mut Cursor<Bytes>,
-        tick: RepliconTick,
-    ) -> Result<(), bincode::Error> {
-        let component: Test = bincode::deserialize_from(&mut cursor)?;
-        if let Some(mut buffer) = entity.get_mut::<SnapshotBuffer<Test>>() {
-            buffer.insert(component, tick.get());
-        } else {
-            entity.insert(component);
-        }
-        Ok(())
-    }
-}
-
-impl SnapSerialize for Test {
-    fn snap_serialize(
-        component: Ptr,
-        mut cursor: &mut Cursor<Vec<u8>>,
-    ) -> Result<(), bincode::Error> {
-        // SAFETY: Function called for registered `ComponentId`.
-        let component: &Test = unsafe { component.deref() };
-        bincode::serialize_into(cursor, &component)
     }
 }

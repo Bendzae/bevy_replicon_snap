@@ -31,7 +31,7 @@ pub fn derive_answer_fn(input: TokenStream) -> TokenStream {
         _ => panic!("expected a struct"),
     };
     let output = quote! {
-        impl Interpolate for #ident {
+        impl ::bevy_replicon_snap::Interpolate for #ident {
             fn interpolate(&self, other: Self, t: f32) -> Self {
               #body
             }
@@ -44,7 +44,7 @@ pub fn derive_answer_fn(input: TokenStream) -> TokenStream {
 pub fn derive_snap_serialize(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, .. } = parse_macro_input!(input);
     let output = quote! {
-        impl SnapSerialize for #ident {
+        impl ::bevy_replicon_snap::SnapSerialize for #ident {
             fn snap_serialize(
                 component: ::bevy::ptr::Ptr,
                 mut cursor: &mut ::std::io::Cursor<Vec<u8>>,
@@ -62,7 +62,7 @@ pub fn derive_snap_serialize(input: TokenStream) -> TokenStream {
 pub fn derive_snap_deserialize(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, .. } = parse_macro_input!(input);
     let output = quote! {
-        impl SnapDeserialize for #ident {
+        impl ::bevy_replicon_snap::SnapDeserialize for #ident {
             fn snap_deserialize(
                 entity: &mut ::bevy::ecs::world::EntityMut,
                 _entity_map: &mut ::bevy_replicon::prelude::ServerEntityMap,
@@ -70,7 +70,7 @@ pub fn derive_snap_deserialize(input: TokenStream) -> TokenStream {
                 tick: ::bevy_replicon::prelude::RepliconTick,
             ) -> Result<(), ::bevy_replicon::bincode::Error> {
                 let component: #ident = ::bevy_replicon::bincode::deserialize_from(&mut cursor)?;
-                if let Some(mut buffer) = entity.get_mut::<SnapshotBuffer<#ident>>() {
+                if let Some(mut buffer) = entity.get_mut::<::bevy_replicon_snap::SnapshotBuffer<#ident>>() {
                     buffer.insert(component, tick.get());
                 } else {
                     entity.insert(component);

@@ -13,3 +13,17 @@ bevy_replicon = "0.14.0"
 serde = "1.0"
 
 bevy_replicon_snap_macros = { path = "macros" }
+
+[dev-dependencies]
+clap = { version = "4.1", features = ["derive"] }
+bevy = { version = "0.11.3", default-features = false, features = [
+    "bevy_asset",
+    "bevy_core_pipeline",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_text",
+    "bevy_ui",
+    "bevy_gizmos",
+    "x11",
+    "default_font",
+] }
