@@ -48,6 +48,8 @@ Fortunately this library provides derive macros for those
 (Note: Note Interpolate macro only works for types that have a `lerp()` function right now) 
 
 ```rust
+use bevy_replicon_snap_macros::{Interpolate, SnapDeserialize, SnapSerialize};
+
 #[derive(
     Component,
     Deserialize,
