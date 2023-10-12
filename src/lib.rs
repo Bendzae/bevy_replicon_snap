@@ -1,17 +1,22 @@
-use bevy::prelude::system_adapter::new;
-use bevy::prelude::*;
-use bevy::reflect::erased_serde::__private::serde::{Deserialize, Serialize};
-use bevy_replicon::prelude::*;
-use bevy_replicon::renet::transport::NetcodeClientTransport;
-use bevy_replicon::renet::SendType;
-use bevy_replicon::replicon_core::replication_rules::{
-    DeserializeFn, RemoveComponentFn, SerializeFn,
-};
-use serde::de::DeserializeOwned;
 use std::collections::vec_deque::Iter;
 use std::collections::VecDeque;
 use std::fmt::Debug;
-use std::iter::Map;
+use std::io::Cursor;
+
+use bevy::ecs::world::EntityMut;
+use bevy::prelude::*;
+use bevy::ptr::Ptr;
+use bevy::reflect::erased_serde::__private::serde::{Deserialize, Serialize};
+use bevy_replicon::bincode;
+use bevy_replicon::prelude::*;
+use bevy_replicon::renet::transport::NetcodeClientTransport;
+use bevy_replicon::renet::{Bytes, SendType};
+use bevy_replicon::replicon_core::replication_rules;
+use bevy_replicon::replicon_core::replication_rules::{
+    DeserializeFn, RemoveComponentFn, SerializeFn,
+};
+pub use bevy_replicon_snap_macros;
+use serde::de::DeserializeOwned;
 
 pub struct SnapshotInterpolationPlugin {
     pub max_tick_rate: u16,
@@ -32,7 +37,7 @@ impl Plugin for SnapshotInterpolationPlugin {
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Debug)]
 pub struct InterpolationConfig {
     pub max_tick_rate: u16,
 }
@@ -214,9 +219,27 @@ fn predicted_event_system<T: Event + Clone>(
     }
 }
 
+pub trait SnapSerialize {
+    fn snap_serialize(ptr: Ptr, cursor: &mut Cursor<Vec<u8>>) -> Result<(), bincode::Error>;
+}
+
+pub trait SnapDeserialize {
+    fn snap_deserialize(
+        entity_mut: &mut EntityMut,
+        server_entity_map: &mut ServerEntityMap,
+        cursor: &mut Cursor<Bytes>,
+        replicon_tick: RepliconTick,
+    ) -> Result<(), bincode::Error>;
+}
+
 pub trait AppInterpolationExt {
     /// TODO: Add docs
-    fn replicate_with_interpolation<C>(
+    fn replicate_interpolated<C>(&mut self) -> &mut Self
+    where
+        C: Component + Interpolate + Clone + SnapSerialize + SnapDeserialize;
+
+    /// TODO: Add docs
+    fn replicate_interpolated_with<C>(
         &mut self,
         serialize: SerializeFn,
         deserialize: DeserializeFn,
@@ -231,7 +254,17 @@ pub trait AppInterpolationExt {
 }
 
 impl AppInterpolationExt for App {
-    fn replicate_with_interpolation<T>(
+    fn replicate_interpolated<C>(&mut self) -> &mut Self
+    where
+        C: Component + Interpolate + Clone + SnapSerialize + SnapDeserialize,
+    {
+        self.replicate_interpolated_with::<C>(
+            C::snap_serialize,
+            C::snap_deserialize,
+            replication_rules::remove_component::<C>,
+        )
+    }
+    fn replicate_interpolated_with<T>(
         &mut self,
         serialize: SerializeFn,
         deserialize: DeserializeFn,
