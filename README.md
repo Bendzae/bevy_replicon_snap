@@ -85,3 +85,6 @@ commands.spawn((
 ### Client-Side Prediction
 Coming soon..
 In the meantime check the "predicted" example!
+
+## Alternatives
+- [bevy_timewarp](https://github.com/RJ/bevy_timewarp) An awesome predict/rollback library that also has integration with bevy_replicon
