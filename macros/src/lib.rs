@@ -46,12 +46,12 @@ pub fn derive_snap_serialize(input: TokenStream) -> TokenStream {
     let output = quote! {
         impl SnapSerialize for #ident {
             fn snap_serialize(
-                component: Ptr,
-                mut cursor: &mut Cursor<Vec<u8>>,
-            ) -> Result<(), bincode::Error> {
+                component: ::bevy::ptr::Ptr,
+                mut cursor: &mut ::std::io::Cursor<Vec<u8>>,
+            ) -> Result<(), ::bevy_replicon::bincode::Error> {
                 // SAFETY: Function called for registered `ComponentId`.
                 let component: &#ident = unsafe { component.deref() };
-                bincode::serialize_into(cursor, &component)
+                ::bevy_replicon::bincode::serialize_into(cursor, &component)
             }
         }
     };
@@ -63,14 +63,13 @@ pub fn derive_snap_deserialize(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, .. } = parse_macro_input!(input);
     let output = quote! {
         impl SnapDeserialize for #ident {
-             fn snap_deserialize(
-                entity: &mut EntityMut,
-                _entity_map: &mut ServerEntityMap,
-                mut cursor: &mut Cursor<Bytes>,
-                tick: RepliconTick,
-            ) -> Result<(), bincode::Error> {
-                let value: Vec2 = bincode::deserialize_from(&mut cursor)?;
-                let component = #ident(value);
+            fn snap_deserialize(
+                entity: &mut ::bevy::ecs::world::EntityMut,
+                _entity_map: &mut ::bevy_replicon::prelude::ServerEntityMap,
+                mut cursor: &mut ::std::io::Cursor<::bevy_replicon::renet::Bytes>,
+                tick: ::bevy_replicon::prelude::RepliconTick,
+            ) -> Result<(), ::bevy_replicon::bincode::Error> {
+                let component: #ident = ::bevy_replicon::bincode::deserialize_from(&mut cursor)?;
                 if let Some(mut buffer) = entity.get_mut::<SnapshotBuffer<#ident>>() {
                     buffer.insert(component, tick.get());
                 } else {

@@ -288,3 +288,39 @@ impl AppInterpolationExt for App {
         self.add_client_event::<C>(policy)
     }
 }
+
+#[derive(Component, Serialize, Deserialize, Clone)]
+struct Test;
+
+impl Interpolate for Test {
+    fn interpolate(&self, other: Self, t: f32) -> Self {
+        todo!()
+    }
+}
+impl SnapDeserialize for Test {
+    fn snap_deserialize(
+        entity: &mut EntityMut,
+        _entity_map: &mut ServerEntityMap,
+        mut cursor: &mut Cursor<Bytes>,
+        tick: RepliconTick,
+    ) -> Result<(), bincode::Error> {
+        let component: Test = bincode::deserialize_from(&mut cursor)?;
+        if let Some(mut buffer) = entity.get_mut::<SnapshotBuffer<Test>>() {
+            buffer.insert(component, tick.get());
+        } else {
+            entity.insert(component);
+        }
+        Ok(())
+    }
+}
+
+impl SnapSerialize for Test {
+    fn snap_serialize(
+        component: Ptr,
+        mut cursor: &mut Cursor<Vec<u8>>,
+    ) -> Result<(), bincode::Error> {
+        // SAFETY: Function called for registered `ComponentId`.
+        let component: &Test = unsafe { component.deref() };
+        bincode::serialize_into(cursor, &component)
+    }
+}
