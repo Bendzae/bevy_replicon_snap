@@ -158,7 +158,7 @@ fn owner_prediction_init_system(
 
 fn snapshot_buffer_init_system<T: Component + Interpolate + Clone>(
     q_interpolated: Query<(Entity, &T), Added<Interpolated>>,
-    q_owner_predicted: Query<(Entity, &T), Added<OwnerPredicted>>,
+    q_owner_predicted: Query<(Entity, &T), Added<Predicted>>,
     mut commands: Commands,
     tick: Res<RepliconTick>,
 ) {

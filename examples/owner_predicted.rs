@@ -1,4 +1,5 @@
-//! This is the "Simple Box" example from the bevy_replicon repo with snapshot interpolation
+//! This is the "Simple Box" example from the bevy_replicon repo with owner predicted players
+//! This means the local player is predicted and other networked entities are interpolated
 
 use std::{
     error::Error,
@@ -18,7 +19,8 @@ use bevy_replicon::{
     },
 };
 use bevy_replicon_snap::{
-    AppInterpolationExt, Interpolated, NetworkOwner, SnapshotInterpolationPlugin,
+    AppInterpolationExt, Interpolated, NetworkOwner, OwnerPredicted, Predicted,
+    PredictedEventHistory, SnapshotBuffer, SnapshotInterpolationPlugin,
 };
 use bevy_replicon_snap_macros::{Interpolate, SnapDeserialize, SnapSerialize};
 use clap::Parser;
@@ -50,7 +52,7 @@ impl Plugin for SimpleBoxPlugin {
     fn build(&self, app: &mut App) {
         app.replicate_interpolated::<PlayerPosition>()
             .replicate::<PlayerColor>()
-            .add_client_event::<MoveDirection>(SendPolicy::Ordered)
+            .add_client_predicted_event::<MoveDirection>(SendPolicy::Ordered)
             .add_systems(
                 Startup,
                 (
@@ -62,6 +64,7 @@ impl Plugin for SimpleBoxPlugin {
                 Update,
                 (
                     Self::movement_system.run_if(has_authority()), // Runs only on the server or a single player.
+                    Self::predicted_movement_system.run_if(resource_exists::<RenetClient>()), // Runs only on clients.
                     Self::server_event_system.run_if(resource_exists::<RenetServer>()), // Runs only on the server.
                     (Self::draw_boxes_system, Self::input_system),
                 ),
@@ -211,23 +214,54 @@ impl SimpleBoxPlugin {
     }
 
     /// Mutates [`PlayerPosition`] based on [`MoveCommandEvents`].
-    ///
-    /// Fast-paced games usually you don't want to wait until server send a position back because of the latency.
-    /// Tthis example just demonstrates simple replication concept with basic interpolation.
+    /// Server implementation
     fn movement_system(
         time: Res<Time>,
         mut move_events: EventReader<FromClient<MoveDirection>>,
-        mut players: Query<(&NetworkOwner, &mut PlayerPosition)>,
+        mut players: Query<(&NetworkOwner, &mut PlayerPosition), Without<Predicted>>,
     ) {
-        const MOVE_SPEED: f32 = 300.0;
         for FromClient { client_id, event } in &mut move_events {
             info!("received event {event:?} from client {client_id}");
             for (player, mut position) in &mut players {
                 if *client_id == player.0 {
-                    **position += event.0 * time.delta_seconds() * MOVE_SPEED;
+                    Self::apply_move_command(&mut *position, event, time.delta_seconds())
                 }
             }
         }
+    }
+
+    // Client prediction implementation
+    fn predicted_movement_system(
+        mut q_predicted_players: Query<
+            (&mut PlayerPosition, &SnapshotBuffer<PlayerPosition>),
+            (With<Predicted>, Without<Interpolated>),
+        >,
+        mut local_events: EventReader<MoveDirection>,
+        mut event_history: ResMut<PredictedEventHistory<MoveDirection>>,
+        client_tick: Res<LastRepliconTick>,
+        time: Res<Time>,
+    ) {
+        // Append the latest input event
+        for event in &mut local_events {
+            event_history.insert(event.clone(), client_tick.get(), time.delta_seconds());
+        }
+        // Apply all pending inputs to latest snapshot
+        for (mut position, snapshot_buffer) in q_predicted_players.iter_mut() {
+            let mut corrected_position = snapshot_buffer.latest_snapshot().0;
+            for event_snapshot in event_history.predict(snapshot_buffer.latest_snapshot_tick()) {
+                Self::apply_move_command(
+                    &mut corrected_position,
+                    &event_snapshot.value,
+                    event_snapshot.delta_time,
+                );
+            }
+            position.0 = corrected_position;
+        }
+    }
+
+    fn apply_move_command(position: &mut Vec2, event: &MoveDirection, delta_time: f32) {
+        const MOVE_SPEED: f32 = 300.0;
+        *position += event.0 * delta_time * MOVE_SPEED;
     }
 }
 
@@ -262,7 +296,7 @@ struct PlayerBundle {
     position: PlayerPosition,
     color: PlayerColor,
     replication: Replication,
-    interpolated: Interpolated,
+    owner_predicted: OwnerPredicted,
 }
 
 impl PlayerBundle {
@@ -272,7 +306,7 @@ impl PlayerBundle {
             position: PlayerPosition(position),
             color: PlayerColor(color),
             replication: Replication,
-            interpolated: Interpolated,
+            owner_predicted: OwnerPredicted,
         }
     }
 }
@@ -294,5 +328,5 @@ struct PlayerPosition(Vec2);
 struct PlayerColor(Color);
 
 /// A movement event for the controlled box.
-#[derive(Debug, Default, Deserialize, Event, Serialize)]
+#[derive(Debug, Default, Deserialize, Event, Serialize, Clone)]
 struct MoveDirection(Vec2);
