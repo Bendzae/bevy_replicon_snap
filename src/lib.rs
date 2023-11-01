@@ -6,7 +6,7 @@ use std::io::Cursor;
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::*;
 use bevy::ptr::Ptr;
-use bevy::reflect::erased_serde::__private::serde::{Deserialize, Serialize};
+use bevy::reflect::erased_serde::private::serde::{Deserialize, Serialize};
 use bevy_replicon::bincode;
 use bevy_replicon::prelude::*;
 use bevy_replicon::renet::transport::NetcodeClientTransport;
@@ -203,7 +203,7 @@ fn predicted_snapshot_system<T: Component + Interpolate + Clone>(
     mut q: Query<&mut SnapshotBuffer<T>, (Without<Interpolated>, With<Predicted>)>,
     time: Res<Time>,
 ) {
-    for (mut snapshot_buffer) in q.iter_mut() {
+    for mut snapshot_buffer in q.iter_mut() {
         snapshot_buffer.time_since_last_snapshot += time.delta_seconds();
     }
 }
