@@ -6,7 +6,6 @@ use std::io::Cursor;
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::*;
 use bevy::ptr::Ptr;
-use bevy::reflect::erased_serde::private::serde::{Deserialize, Serialize};
 use bevy_replicon::bincode;
 use bevy_replicon::prelude::*;
 use bevy_replicon::renet::transport::NetcodeClientTransport;
@@ -17,6 +16,7 @@ use bevy_replicon::replicon_core::replication_rules::{
 };
 pub use bevy_replicon_snap_macros;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 pub struct SnapshotInterpolationPlugin {
     pub max_tick_rate: u16,

@@ -1,6 +1,6 @@
 [package]
 name = "bevy_replicon_snap"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 #keywords = "networking, netcode, bevy, bevy_replicon, snapshot, interpolation, prediction"
 description = "High-level networking crate that extends the bevy_replicon crate to allow snapshot interpolation and client-side prediction"
