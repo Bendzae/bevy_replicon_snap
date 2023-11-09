@@ -3,7 +3,6 @@ use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::io::Cursor;
 
-use bevy::ecs::world::EntityMut;
 use bevy::prelude::*;
 use bevy::ptr::Ptr;
 use bevy_replicon::bincode;
@@ -214,7 +213,7 @@ pub trait SnapSerialize {
 
 pub trait SnapDeserialize {
     fn snap_deserialize(
-        entity_mut: &mut EntityMut,
+        entity_mut: &mut EntityWorldMut,
         server_entity_map: &mut ServerEntityMap,
         cursor: &mut Cursor<Bytes>,
         replicon_tick: RepliconTick,

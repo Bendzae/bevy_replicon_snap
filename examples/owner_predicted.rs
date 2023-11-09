@@ -96,12 +96,13 @@ impl SimpleBoxPlugin {
                 let public_addr = SocketAddr::new(Ipv4Addr::LOCALHOST.into(), port);
                 let socket = UdpSocket::bind(public_addr)?;
                 let server_config = ServerConfig {
+                    current_time,
                     max_clients: 10,
                     protocol_id: PROTOCOL_ID,
-                    public_addr,
                     authentication: ServerAuthentication::Unsecure,
+                    public_addresses: vec![public_addr],
                 };
-                let transport = NetcodeServerTransport::new(current_time, server_config, socket)?;
+                let transport = NetcodeServerTransport::new(server_config, socket)?;
 
                 commands.insert_resource(server);
                 commands.insert_resource(transport);
@@ -161,16 +162,16 @@ impl SimpleBoxPlugin {
 
     /// Logs server events and spawns a new player whenever a client connects.
     fn server_event_system(mut commands: Commands, mut server_event: EventReader<ServerEvent>) {
-        for event in &mut server_event {
+        for event in server_event.read() {
             match event {
                 ServerEvent::ClientConnected { client_id } => {
                     info!("player: {client_id} Connected");
                     // Generate pseudo random color from client id.
-                    let r = ((client_id % 23) as f32) / 23.0;
-                    let g = ((client_id % 27) as f32) / 27.0;
-                    let b = ((client_id % 39) as f32) / 39.0;
+                    let r = ((client_id.raw() % 23) as f32) / 23.0;
+                    let g = ((client_id.raw() % 27) as f32) / 27.0;
+                    let b = ((client_id.raw() % 39) as f32) / 39.0;
                     commands.spawn(PlayerBundle::new(
-                        *client_id,
+                        client_id.raw(),
                         Vec2::ZERO,
                         Color::rgb(r, g, b),
                     ));
@@ -220,7 +221,7 @@ impl SimpleBoxPlugin {
         mut move_events: EventReader<FromClient<MoveDirection>>,
         mut players: Query<(&NetworkOwner, &mut PlayerPosition), Without<Predicted>>,
     ) {
-        for FromClient { client_id, event } in &mut move_events {
+        for FromClient { client_id, event } in move_events.read() {
             info!("received event {event:?} from client {client_id}");
             for (player, mut position) in &mut players {
                 if *client_id == player.0 {
@@ -242,7 +243,7 @@ impl SimpleBoxPlugin {
         time: Res<Time>,
     ) {
         // Append the latest input event
-        for event in &mut local_events {
+        for event in local_events.read() {
             event_history.insert(event.clone(), client_tick.get(), time.delta_seconds());
         }
         // Apply all pending inputs to latest snapshot

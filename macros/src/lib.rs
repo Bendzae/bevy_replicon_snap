@@ -64,7 +64,7 @@ pub fn derive_snap_deserialize(input: TokenStream) -> TokenStream {
     let output = quote! {
         impl ::bevy_replicon_snap::SnapDeserialize for #ident {
             fn snap_deserialize(
-                entity: &mut ::bevy::ecs::world::EntityMut,
+                entity: &mut ::bevy::prelude::EntityWorldMut,
                 _entity_map: &mut ::bevy_replicon::prelude::ServerEntityMap,
                 mut cursor: &mut ::std::io::Cursor<::bevy_replicon::renet::Bytes>,
                 tick: ::bevy_replicon::prelude::RepliconTick,
