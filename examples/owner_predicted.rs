@@ -22,7 +22,7 @@ use bevy_replicon_snap::{
     AppInterpolationExt, Interpolated, NetworkOwner, OwnerPredicted, Predicted,
     PredictedEventHistory, SnapshotBuffer, SnapshotInterpolationPlugin,
 };
-use bevy_replicon_snap_macros::{Interpolate, SnapDeserialize, SnapSerialize};
+use bevy_replicon_snap_macros::Interpolate;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 
@@ -311,17 +311,7 @@ impl PlayerBundle {
     }
 }
 
-#[derive(
-    Component,
-    Deserialize,
-    Serialize,
-    Deref,
-    DerefMut,
-    Interpolate,
-    SnapSerialize,
-    SnapDeserialize,
-    Clone,
-)]
+#[derive(Component, Deserialize, Serialize, Deref, DerefMut, Interpolate, Clone)]
 struct PlayerPosition(Vec2);
 
 #[derive(Component, Deserialize, Serialize)]
