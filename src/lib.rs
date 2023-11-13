@@ -22,14 +22,38 @@ pub struct SnapshotInterpolationPlugin {
     pub max_tick_rate: u16,
 }
 
+/// Sets for interpolation systems.
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub enum InterpolationSet {
+    /// Systems that initialize buffers and flag components for replicated entities.
+    ///
+    /// Runs in `PreUpdate`.
+    Init,
+    /// Systems that insert data into interpolation and process interpolation.
+    ///
+    /// Runs in `PreUpdate`.
+    Interpolate,
+}
+
 impl Plugin for SnapshotInterpolationPlugin {
     fn build(&self, app: &mut App) {
-        app.replicate::<Interpolated>()
+        app.register_type::<Interpolated>()
+            .register_type::<OwnerPredicted>()
+            .register_type::<NetworkOwner>()
+            .register_type::<Predicted>()
+            .replicate::<Interpolated>()
             .replicate::<NetworkOwner>()
             .replicate::<OwnerPredicted>()
+            .configure_set(PreUpdate, InterpolationSet::Init.after(ClientSet::Receive))
+            .configure_set(
+                PreUpdate,
+                InterpolationSet::Interpolate.after(InterpolationSet::Init),
+            )
             .add_systems(
                 Update,
-                owner_prediction_init_system.run_if(resource_exists::<NetcodeClientTransport>()),
+                owner_prediction_init_system
+                    .run_if(resource_exists::<NetcodeClientTransport>())
+                    .in_set(InterpolationSet::Init),
             )
             .insert_resource(InterpolationConfig {
                 max_tick_rate: self.max_tick_rate,
@@ -37,34 +61,34 @@ impl Plugin for SnapshotInterpolationPlugin {
     }
 }
 
-#[derive(Resource, Debug)]
+#[derive(Resource, Serialize, Deserialize, Debug)]
 pub struct InterpolationConfig {
     pub max_tick_rate: u16,
 }
 
-#[derive(Component, Deserialize, Serialize)]
+#[derive(Component, Deserialize, Serialize, Reflect)]
 pub struct Interpolated;
 
-#[derive(Component, Deserialize, Serialize)]
+#[derive(Component, Deserialize, Serialize, Reflect)]
 pub struct OwnerPredicted;
 
-#[derive(Component, Deserialize, Serialize)]
+#[derive(Component, Deserialize, Serialize, Reflect)]
 pub struct NetworkOwner(pub u64);
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct Predicted;
 
 pub trait Interpolate {
     fn interpolate(&self, other: Self, t: f32) -> Self;
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Reflect)]
 pub struct Snapshot<T: Component + Interpolate + Clone> {
     tick: u32,
     value: T,
 }
 
-#[derive(Component, Deserialize, Serialize)]
+#[derive(Component, Deserialize, Serialize, Reflect)]
 pub struct SnapshotBuffer<T: Component + Interpolate + Clone> {
     buffer: VecDeque<T>,
     time_since_last_snapshot: f32,
@@ -156,25 +180,20 @@ fn owner_prediction_init_system(
     }
 }
 
+/// Initialize snapshot buffers for new entities.
 fn snapshot_buffer_init_system<T: Component + Interpolate + Clone>(
-    q_interpolated: Query<(Entity, &T), Added<Interpolated>>,
-    q_owner_predicted: Query<(Entity, &T), Added<Predicted>>,
+    q_new: Query<(Entity, &T), Or<(Added<Predicted>, Added<Interpolated>)>>,
     mut commands: Commands,
     tick: Res<RepliconTick>,
 ) {
-    for (e, initial_value) in q_interpolated.iter() {
-        let mut buffer = SnapshotBuffer::new();
-        buffer.insert(initial_value.clone(), tick.get());
-        commands.entity(e).insert(buffer);
-    }
-    // TODO: Query with OR?
-    for (e, initial_value) in q_owner_predicted.iter() {
+    for (e, initial_value) in q_new.iter() {
         let mut buffer = SnapshotBuffer::new();
         buffer.insert(initial_value.clone(), tick.get());
         commands.entity(e).insert(buffer);
     }
 }
 
+/// Interpolate between snapshots.
 fn snapshot_interpolation_system<T: Component + Interpolate + Clone>(
     mut q: Query<(&mut T, &mut SnapshotBuffer<T>), (With<Interpolated>, Without<Predicted>)>,
     time: Res<Time>,
@@ -199,6 +218,7 @@ fn snapshot_interpolation_system<T: Component + Interpolate + Clone>(
     }
 }
 
+/// Advances the snapshot buffer time for predicted entities.
 fn predicted_snapshot_system<T: Component + Interpolate + Clone>(
     mut q: Query<&mut SnapshotBuffer<T>, (Without<Interpolated>, With<Predicted>)>,
     time: Res<Time>,
@@ -264,12 +284,18 @@ impl AppInterpolationExt for App {
     {
         self.add_systems(
             PreUpdate,
+            (snapshot_buffer_init_system::<T>.after(owner_prediction_init_system))
+                .in_set(InterpolationSet::Init)
+                .run_if(resource_exists::<RenetClient>()),
+        )
+        .add_systems(
+            PreUpdate,
             (
-                snapshot_buffer_init_system::<T>,
                 snapshot_interpolation_system::<T>,
                 predicted_snapshot_system::<T>,
             )
-                .after(ClientSet::Receive)
+                .chain()
+                .in_set(InterpolationSet::Interpolate)
                 .run_if(resource_exists::<RenetClient>()),
         );
         self.replicate_with::<T>(serialize, deserialize, remove)
