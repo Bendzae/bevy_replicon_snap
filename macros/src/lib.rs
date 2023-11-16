@@ -7,7 +7,7 @@ use syn::DeriveInput;
 use syn::{parse_macro_input, Data, DataStruct, Fields};
 
 #[proc_macro_derive(Interpolate)]
-pub fn derive_answer_fn(input: TokenStream) -> TokenStream {
+pub fn derive_interpolate(input: TokenStream) -> TokenStream {
     let DeriveInput { ident, data, .. } = parse_macro_input!(input);
 
     let body = match data {
