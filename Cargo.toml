@@ -1,16 +1,15 @@
 [package]
 name = "bevy_replicon_snap"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
-#keywords = "networking, netcode, bevy, bevy_replicon, snapshot, interpolation, prediction"
+keywords = ["networking", "bevy", "snapshot", "interpolation", "prediction"]
 description = "High-level networking crate that extends the bevy_replicon crate to allow snapshot interpolation and client-side prediction"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 bevy = { version = "0.12", default_features = false }
-#bevy_replicon = "0.16"
-bevy_replicon = { git = "https://github.com/Bendzae/bevy_replicon_fork", branch = "bevy-0.12" }
+bevy_replicon = "0.17.0"
 serde = "1.0"
 
 bevy_replicon_snap_macros = { path = "macros" }

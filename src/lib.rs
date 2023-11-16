@@ -3,7 +3,6 @@ use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::io::Cursor;
 
-use bevy::ecs::world::EntityMut;
 use bevy::prelude::*;
 use bevy_replicon::bincode;
 use bevy_replicon::bincode::deserialize_from;
@@ -14,9 +13,10 @@ use bevy_replicon::replicon_core::replication_rules;
 use bevy_replicon::replicon_core::replication_rules::{
     serialize_component, DeserializeFn, RemoveComponentFn, SerializeFn,
 };
-pub use bevy_replicon_snap_macros;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+
+pub use bevy_replicon_snap_macros;
 
 pub struct SnapshotInterpolationPlugin {
     pub max_tick_rate: u16,
@@ -44,8 +44,8 @@ impl Plugin for SnapshotInterpolationPlugin {
             .replicate::<Interpolated>()
             .replicate::<NetworkOwner>()
             .replicate::<OwnerPredicted>()
-            .configure_set(PreUpdate, InterpolationSet::Init.after(ClientSet::Receive))
-            .configure_set(
+            .configure_sets(PreUpdate, InterpolationSet::Init.after(ClientSet::Receive))
+            .configure_sets(
                 PreUpdate,
                 InterpolationSet::Interpolate.after(InterpolationSet::Init),
             )
@@ -229,7 +229,7 @@ fn predicted_snapshot_system<T: Component + Interpolate + Clone>(
 }
 
 pub fn deserialize_snap_component<C: Clone + Interpolate + Component + DeserializeOwned>(
-    entity: &mut EntityMut,
+    entity: &mut EntityWorldMut,
     _entity_map: &mut ServerEntityMap,
     cursor: &mut Cursor<Bytes>,
     _tick: RepliconTick,
