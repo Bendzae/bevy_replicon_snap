@@ -8,7 +8,7 @@ use bevy_replicon::bincode;
 use bevy_replicon::bincode::deserialize_from;
 use bevy_replicon::prelude::*;
 use bevy_replicon::renet::transport::NetcodeClientTransport;
-use bevy_replicon::renet::{Bytes, SendType};
+use bevy_replicon::renet::SendType;
 use bevy_replicon::replicon_core::replication_rules;
 use bevy_replicon::replicon_core::replication_rules::{
     serialize_component, DeserializeFn, RemoveComponentFn, SerializeFn,
@@ -231,7 +231,7 @@ fn predicted_snapshot_system<T: Component + Interpolate + Clone>(
 pub fn deserialize_snap_component<C: Clone + Interpolate + Component + DeserializeOwned>(
     entity: &mut EntityWorldMut,
     _entity_map: &mut ServerEntityMap,
-    cursor: &mut Cursor<Bytes>,
+    cursor: &mut Cursor<&[u8]>,
     _tick: RepliconTick,
 ) -> bincode::Result<()> {
     let component: C = deserialize_from(cursor)?;

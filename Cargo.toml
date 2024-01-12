@@ -8,15 +8,15 @@ description = "High-level networking crate that extends the bevy_replicon crate 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy = { version = "0.12", default_features = false }
-bevy_replicon = "0.17.0"
+bevy = { version = "0.12.1", default_features = false }
+bevy_replicon = "0.19.0"
 serde = "1.0"
 
 bevy_replicon_snap_macros = { path = "macros" }
 
 [dev-dependencies]
 clap = { version = "4.1", features = ["derive"] }
-bevy = { version = "0.12", default-features = false, features = [
+bevy = { version = "0.12.1", default-features = false, features = [
     "bevy_asset",
     "bevy_core_pipeline",
     "bevy_render",

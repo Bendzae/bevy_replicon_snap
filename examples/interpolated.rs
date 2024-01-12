@@ -34,9 +34,10 @@ fn main() {
         .init_resource::<Cli>() // Parse CLI before creating window.
         .add_plugins((
             DefaultPlugins,
-            ReplicationPlugins
-                .build()
-                .set(ServerPlugin::new(TickPolicy::MaxTickRate(MAX_TICK_RATE))),
+            ReplicationPlugins.build().set(ServerPlugin {
+                tick_policy: TickPolicy::MaxTickRate(MAX_TICK_RATE),
+                ..default()
+            }),
             SnapshotInterpolationPlugin {
                 max_tick_rate: MAX_TICK_RATE,
             },
@@ -223,7 +224,6 @@ impl SimpleBoxPlugin {
     ) {
         const MOVE_SPEED: f32 = 300.0;
         for FromClient { client_id, event } in move_events.read() {
-            info!("received event {event:?} from client {client_id}");
             for (player, mut position) in &mut players {
                 if client_id.raw() == player.0 {
                     **position += event.0 * time.delta_seconds() * MOVE_SPEED;

@@ -36,9 +36,10 @@ fn main() {
         .init_resource::<Cli>() // Parse CLI before creating window.
         .add_plugins((
             DefaultPlugins,
-            ReplicationPlugins
-                .build()
-                .set(ServerPlugin::new(TickPolicy::MaxTickRate(MAX_TICK_RATE))),
+            ReplicationPlugins.build().set(ServerPlugin {
+                tick_policy: TickPolicy::MaxTickRate(MAX_TICK_RATE),
+                ..default()
+            }),
             SnapshotInterpolationPlugin {
                 max_tick_rate: MAX_TICK_RATE,
             },
@@ -240,7 +241,7 @@ impl SimpleBoxPlugin {
         >,
         mut local_events: EventReader<MoveDirection>,
         mut event_history: ResMut<PredictedEventHistory<MoveDirection>>,
-        client_tick: Res<LastRepliconTick>,
+        client_tick: Res<RepliconTick>,
         time: Res<Time>,
     ) {
         // Append the latest input event

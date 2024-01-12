@@ -30,9 +30,10 @@ fn main() {
         .init_resource::<Cli>() // Parse CLI before creating window.
         .add_plugins((
             DefaultPlugins,
-            ReplicationPlugins
-                .build()
-                .set(ServerPlugin::new(TickPolicy::MaxTickRate(MAX_TICK_RATE))),
+            ReplicationPlugins.build().set(ServerPlugin {
+                tick_policy: TickPolicy::MaxTickRate(MAX_TICK_RATE),
+                ..default()
+            }),
             SimpleBoxPlugin,
         ))
         .run();
