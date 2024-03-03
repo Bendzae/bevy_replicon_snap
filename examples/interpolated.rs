@@ -7,7 +7,6 @@ use std::{
 };
 
 use bevy::prelude::*;
-use bevy_replicon::renet::ClientId;
 use bevy_replicon::{
     prelude::*,
     renet::{
@@ -15,7 +14,7 @@ use bevy_replicon::{
             ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport,
             ServerAuthentication, ServerConfig,
         },
-        ConnectionConfig, ServerEvent,
+        ClientId, ConnectionConfig, ServerEvent,
     },
 };
 use bevy_replicon_snap::{
@@ -55,16 +54,13 @@ impl Plugin for SimpleBoxPlugin {
             .add_client_event::<MoveDirection>(EventType::Ordered)
             .add_systems(
                 Startup,
-                (
-                    Self::cli_system.pipe(system_adapter::unwrap),
-                    Self::init_system,
-                ),
+                (Self::cli_system.map(Result::unwrap), Self::init_system),
             )
             .add_systems(
                 Update,
                 (
-                    Self::movement_system.run_if(has_authority()), // Runs only on the server or a single player.
-                    Self::server_event_system.run_if(resource_exists::<RenetServer>()), // Runs only on the server.
+                    Self::movement_system.run_if(has_authority), // Runs only on the server or a single player.
+                    Self::server_event_system.run_if(resource_exists::<RenetServer>), // Runs only on the server.
                     (Self::draw_boxes_system, Self::input_system),
                 ),
             );
@@ -194,18 +190,18 @@ impl SimpleBoxPlugin {
     }
 
     /// Reads player inputs and sends [`MoveCommandEvents`]
-    fn input_system(mut move_events: EventWriter<MoveDirection>, input: Res<Input<KeyCode>>) {
+    fn input_system(mut move_events: EventWriter<MoveDirection>, input: Res<ButtonInput<KeyCode>>) {
         let mut direction = Vec2::ZERO;
-        if input.pressed(KeyCode::Right) {
+        if input.pressed(KeyCode::ArrowRight) {
             direction.x += 1.0;
         }
-        if input.pressed(KeyCode::Left) {
+        if input.pressed(KeyCode::ArrowLeft) {
             direction.x -= 1.0;
         }
-        if input.pressed(KeyCode::Up) {
+        if input.pressed(KeyCode::ArrowUp) {
             direction.y += 1.0;
         }
-        if input.pressed(KeyCode::Down) {
+        if input.pressed(KeyCode::ArrowDown) {
             direction.y -= 1.0;
         }
         if direction != Vec2::ZERO {

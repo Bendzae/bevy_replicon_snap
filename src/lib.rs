@@ -52,7 +52,7 @@ impl Plugin for SnapshotInterpolationPlugin {
             .add_systems(
                 Update,
                 owner_prediction_init_system
-                    .run_if(resource_exists::<NetcodeClientTransport>())
+                    .run_if(resource_exists::<NetcodeClientTransport>)
                     .in_set(InterpolationSet::Init),
             )
             .insert_resource(InterpolationConfig {
@@ -172,7 +172,7 @@ fn owner_prediction_init_system(
 ) {
     let client_id = client.client_id();
     for (e, id) in q_owners.iter() {
-        if id.0 == client_id {
+        if id.0 == client_id.raw() {
             commands.entity(e).insert(Predicted);
         } else {
             commands.entity(e).insert(Interpolated);
@@ -232,11 +232,11 @@ pub fn deserialize_snap_component<C: Clone + Interpolate + Component + Deseriali
     entity: &mut EntityWorldMut,
     _entity_map: &mut ServerEntityMap,
     cursor: &mut Cursor<&[u8]>,
-    _tick: RepliconTick,
+    tick: RepliconTick,
 ) -> bincode::Result<()> {
     let component: C = deserialize_from(cursor)?;
     if let Some(mut buffer) = entity.get_mut::<SnapshotBuffer<C>>() {
-        buffer.insert(component, _tick.get());
+        buffer.insert(component, tick.get());
     } else {
         entity.insert(component);
     }
@@ -290,7 +290,7 @@ impl AppInterpolationExt for App {
             PreUpdate,
             (snapshot_buffer_init_system::<T>.after(owner_prediction_init_system))
                 .in_set(InterpolationSet::Init)
-                .run_if(resource_exists::<RenetClient>()),
+                .run_if(resource_exists::<RenetClient>),
         )
         .add_systems(
             PreUpdate,
@@ -300,7 +300,7 @@ impl AppInterpolationExt for App {
             )
                 .chain()
                 .in_set(InterpolationSet::Interpolate)
-                .run_if(resource_exists::<RenetClient>()),
+                .run_if(resource_exists::<RenetClient>),
         );
         self.replicate_with::<T>(serialize, deserialize, remove)
     }
