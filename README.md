@@ -65,8 +65,8 @@ you will have to implement it yourself.
 ```rust
 use bevy_replicon_snap_macros::{Interpolate};
 
-#[derive(Component, Deserialize, Serialize, Interpolate, Clone)] struct
-PlayerPosition(Vec2);
+#[derive(Component, Deserialize, Serialize, Interpolate, Clone)] 
+struct PlayerPosition(Vec2);
 ```
 
 Next you need to register the component for Interpolation:
