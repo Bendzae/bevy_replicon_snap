@@ -57,20 +57,21 @@ const MAX_TICK_RATE: u16 = 30;
 To allow a Component to be interpolated it needs to implement the traits:
 `Interpolate`, `Serialze` and `Deserialize`.
 
-This lib provides a basic derive macro for `Interpolate` but for complex types you will have to implement it yourself.
+This lib provides a basic derive macro for `Interpolate` but for complex types
+you will have to implement it yourself.
 
 use bevy_replicon_snap_macros::{Interpolate};
 
+```rust
 #[derive(Component, Deserialize, Serialize, Interpolate, Clone)] struct
 PlayerPosition(Vec2);
-
-````
+```
 
 Next you need to register the component for Interpolation:
 
 ```rust
 app.replicate_interpolated::<PlayerPosition>()
-````
+```
 
 this also registers the component for replication by bevy_replicon.
 
