@@ -1,7 +1,10 @@
 [package]
 name = "bevy_replicon_snap_macros"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+authors = ["Ben Dzaebel <ben@bendz.dev>"]
+repository = "https://github.com/Bendzae/bevy_replicon_snap"
+description = "Macros for bevy_replicon_snap"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
@@ -10,3 +13,4 @@ proc-macro = true
 [dependencies]
 syn = "2.0"
 quote = "1.0"
+

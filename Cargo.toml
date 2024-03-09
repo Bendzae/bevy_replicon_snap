@@ -4,7 +4,7 @@ version = "0.2.0"
 edition = "2021"
 authors = ["Ben Dzaebel <ben@bendz.dev>"]
 hompage = "bendz.dev"
-license_file = "/LICENCE"
+license = "MIT"
 repository = "https://github.com/Bendzae/bevy_replicon_snap"
 categories = ["game-development", "network-programming"]
 keywords = ["networking", "bevy", "snapshot", "interpolation", "prediction"]
@@ -18,7 +18,7 @@ bevy_replicon = "0.24.1"
 bevy_replicon_renet = "0.1.0"
 serde = "1.0"
 
-bevy_replicon_snap_macros = { path = "macros" }
+bevy_replicon_snap_macros = { version = "0.2.0", path = "macros" }
 
 [dev-dependencies]
 clap = { version = "4.1", features = ["derive"] }
