@@ -7,15 +7,16 @@ use std::{
 };
 
 use bevy::prelude::*;
-use bevy_replicon::{
-    prelude::*,
+use bevy_replicon::prelude::*;
+use bevy_replicon_renet::{
     renet::{
         transport::{
             ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport,
             ServerAuthentication, ServerConfig,
         },
-        ClientId, ConnectionConfig, ServerEvent,
+        ConnectionConfig, RenetClient, RenetServer,
     },
+    RenetChannelsExt, RepliconRenetPlugins,
 };
 use bevy_replicon_snap::{
     AppInterpolationExt, Interpolated, NetworkOwner, SnapshotInterpolationPlugin,
@@ -33,10 +34,11 @@ fn main() {
         .init_resource::<Cli>() // Parse CLI before creating window.
         .add_plugins((
             DefaultPlugins,
-            ReplicationPlugins.build().set(ServerPlugin {
+            RepliconPlugins.build().set(ServerPlugin {
                 tick_policy: TickPolicy::MaxTickRate(MAX_TICK_RATE),
                 ..default()
             }),
+            RepliconRenetPlugins,
             SnapshotInterpolationPlugin {
                 max_tick_rate: MAX_TICK_RATE,
             },
@@ -51,7 +53,7 @@ impl Plugin for SimpleBoxPlugin {
     fn build(&self, app: &mut App) {
         app.replicate_interpolated::<PlayerPosition>()
             .replicate::<PlayerColor>()
-            .add_client_event::<MoveDirection>(EventType::Ordered)
+            .add_client_event::<MoveDirection>(ChannelKind::Ordered)
             .add_systems(
                 Startup,
                 (Self::cli_system.map(Result::unwrap), Self::init_system),
@@ -60,7 +62,7 @@ impl Plugin for SimpleBoxPlugin {
                 Update,
                 (
                     Self::movement_system.run_if(has_authority), // Runs only on the server or a single player.
-                    Self::server_event_system.run_if(resource_exists::<RenetServer>), // Runs only on the server.
+                    Self::server_event_system.run_if(server_running), // Runs only on the server.
                     (Self::draw_boxes_system, Self::input_system),
                 ),
             );
@@ -71,15 +73,19 @@ impl SimpleBoxPlugin {
     fn cli_system(
         mut commands: Commands,
         cli: Res<Cli>,
-        network_channels: Res<NetworkChannels>,
+        channels: Res<RepliconChannels>,
     ) -> Result<(), Box<dyn Error>> {
         match *cli {
             Cli::SinglePlayer => {
-                commands.spawn(PlayerBundle::new(SERVER_ID, Vec2::ZERO, Color::GREEN));
+                commands.spawn(PlayerBundle::new(
+                    ClientId::SERVER,
+                    Vec2::ZERO,
+                    Color::GREEN,
+                ));
             }
             Cli::Server { port } => {
-                let server_channels_config = network_channels.get_server_configs();
-                let client_channels_config = network_channels.get_client_configs();
+                let server_channels_config = channels.get_server_configs();
+                let client_channels_config = channels.get_client_configs();
 
                 let server = RenetServer::new(ConnectionConfig {
                     server_channels_config,
@@ -110,11 +116,15 @@ impl SimpleBoxPlugin {
                         ..default()
                     },
                 ));
-                commands.spawn(PlayerBundle::new(SERVER_ID, Vec2::ZERO, Color::GREEN));
+                commands.spawn(PlayerBundle::new(
+                    ClientId::SERVER,
+                    Vec2::ZERO,
+                    Color::GREEN,
+                ));
             }
             Cli::Client { port, ip } => {
-                let server_channels_config = network_channels.get_server_configs();
-                let client_channels_config = network_channels.get_client_configs();
+                let server_channels_config = channels.get_server_configs();
+                let client_channels_config = channels.get_client_configs();
 
                 let client = RenetClient::new(ConnectionConfig {
                     server_channels_config,
@@ -160,11 +170,11 @@ impl SimpleBoxPlugin {
         for event in server_event.read() {
             match event {
                 ServerEvent::ClientConnected { client_id } => {
-                    info!("player: {client_id} Connected");
+                    info!("player: {client_id:?} Connected");
                     // Generate pseudo random color from client id.
-                    let r = ((client_id.raw() % 23) as f32) / 23.0;
-                    let g = ((client_id.raw() % 27) as f32) / 27.0;
-                    let b = ((client_id.raw() % 39) as f32) / 39.0;
+                    let r = ((client_id.get() % 23) as f32) / 23.0;
+                    let g = ((client_id.get() % 27) as f32) / 27.0;
+                    let b = ((client_id.get() % 39) as f32) / 39.0;
                     commands.spawn(PlayerBundle::new(
                         *client_id,
                         Vec2::ZERO,
@@ -172,7 +182,7 @@ impl SimpleBoxPlugin {
                     ));
                 }
                 ServerEvent::ClientDisconnected { client_id, reason } => {
-                    info!("client {client_id} disconnected: {reason}");
+                    info!("client {client_id:?} disconnected: {reason}");
                 }
             }
         }
@@ -221,7 +231,7 @@ impl SimpleBoxPlugin {
         const MOVE_SPEED: f32 = 300.0;
         for FromClient { client_id, event } in move_events.read() {
             for (player, mut position) in &mut players {
-                if client_id.raw() == player.0 {
+                if client_id.get() == player.0 {
                     **position += event.0 * time.delta_seconds() * MOVE_SPEED;
                 }
             }
@@ -266,7 +276,7 @@ struct PlayerBundle {
 impl PlayerBundle {
     fn new(id: ClientId, position: Vec2, color: Color) -> Self {
         Self {
-            owner: NetworkOwner(id.raw()),
+            owner: NetworkOwner(id.get()),
             position: PlayerPosition(position),
             color: PlayerColor(color),
             replication: Replication,

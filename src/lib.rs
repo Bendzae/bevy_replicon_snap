@@ -6,13 +6,15 @@ use std::io::Cursor;
 use bevy::prelude::*;
 use bevy_replicon::bincode;
 use bevy_replicon::bincode::deserialize_from;
-use bevy_replicon::prelude::*;
-use bevy_replicon::renet::transport::NetcodeClientTransport;
-use bevy_replicon::renet::SendType;
-use bevy_replicon::replicon_core::replication_rules;
-use bevy_replicon::replicon_core::replication_rules::{
+use bevy_replicon::client::client_mapper::ServerEntityMap;
+use bevy_replicon::core::replication_rules;
+use bevy_replicon::core::replication_rules::{
     serialize_component, DeserializeFn, RemoveComponentFn, SerializeFn,
 };
+use bevy_replicon::core::replicon_channels::RepliconChannel;
+use bevy_replicon::core::replicon_tick::RepliconTick;
+use bevy_replicon::prelude::*;
+use bevy_replicon_renet::renet::{transport::NetcodeClientTransport, RenetClient};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
@@ -260,7 +262,7 @@ pub trait AppInterpolationExt {
     where
         C: Component + Interpolate + Clone;
 
-    fn add_client_predicted_event<C>(&mut self, policy: impl Into<SendType>) -> &mut Self
+    fn add_client_predicted_event<C>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
     where
         C: Event + Serialize + DeserializeOwned + Debug + Clone;
 }
@@ -305,12 +307,12 @@ impl AppInterpolationExt for App {
         self.replicate_with::<T>(serialize, deserialize, remove)
     }
 
-    fn add_client_predicted_event<C>(&mut self, policy: impl Into<SendType>) -> &mut Self
+    fn add_client_predicted_event<C>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
     where
         C: Event + Serialize + DeserializeOwned + Debug + Clone,
     {
         let history: PredictedEventHistory<C> = PredictedEventHistory::new();
         self.insert_resource(history);
-        self.add_client_event::<C>(policy)
+        self.add_client_event::<C>(channel)
     }
 }
