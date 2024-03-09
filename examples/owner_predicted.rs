@@ -8,7 +8,7 @@ use std::{
 };
 
 use bevy::prelude::*;
-use bevy_replicon::{client::ServerEntityTicks, core::replicon_tick::RepliconTick, prelude::*};
+use bevy_replicon::{client::ServerEntityTicks, prelude::*};
 use bevy_replicon_renet::{
     renet::{
         transport::{
