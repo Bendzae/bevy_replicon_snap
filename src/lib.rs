@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy_replicon::bincode;
 use bevy_replicon::bincode::deserialize_from;
 use bevy_replicon::client::client_mapper::ServerEntityMap;
+use bevy_replicon::client::ServerEntityTicks;
 use bevy_replicon::core::replication_rules;
 use bevy_replicon::core::replication_rules::{
     serialize_component, DeserializeFn, RemoveComponentFn, SerializeFn,
@@ -187,12 +188,14 @@ fn owner_prediction_init_system(
 fn snapshot_buffer_init_system<T: Component + Interpolate + Clone>(
     q_new: Query<(Entity, &T), Or<(Added<Predicted>, Added<Interpolated>)>>,
     mut commands: Commands,
-    tick: Res<RepliconTick>,
+    server_ticks: Res<ServerEntityTicks>,
 ) {
     for (e, initial_value) in q_new.iter() {
-        let mut buffer = SnapshotBuffer::new();
-        buffer.insert(initial_value.clone(), tick.get());
-        commands.entity(e).insert(buffer);
+        if let Some(tick) = (*server_ticks).get(&e) {
+            let mut buffer = SnapshotBuffer::new();
+            buffer.insert(initial_value.clone(), tick.get());
+            commands.entity(e).insert(buffer);
+        }
     }
 }
 

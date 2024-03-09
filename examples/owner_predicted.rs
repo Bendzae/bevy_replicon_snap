@@ -8,7 +8,7 @@ use std::{
 };
 
 use bevy::prelude::*;
-use bevy_replicon::{core::replicon_tick::RepliconTick, prelude::*};
+use bevy_replicon::{client::ServerEntityTicks, core::replicon_tick::RepliconTick, prelude::*};
 use bevy_replicon_renet::{
     renet::{
         transport::{
@@ -230,7 +230,6 @@ impl SimpleBoxPlugin {
         mut players: Query<(&NetworkOwner, &mut PlayerPosition), Without<Predicted>>,
     ) {
         for FromClient { client_id, event } in move_events.read() {
-            info!("received event {event:?} from client {client_id:?}");
             for (player, mut position) in &mut players {
                 if client_id.get() == player.0 {
                     Self::apply_move_command(&mut *position, event, time.delta_seconds())
@@ -242,20 +241,25 @@ impl SimpleBoxPlugin {
     // Client prediction implementation
     fn predicted_movement_system(
         mut q_predicted_players: Query<
-            (&mut PlayerPosition, &SnapshotBuffer<PlayerPosition>),
+            (Entity, &mut PlayerPosition, &SnapshotBuffer<PlayerPosition>),
             (With<Predicted>, Without<Interpolated>),
         >,
         mut local_events: EventReader<MoveDirection>,
         mut event_history: ResMut<PredictedEventHistory<MoveDirection>>,
-        client_tick: Res<RepliconTick>,
+        server_ticks: Res<ServerEntityTicks>,
         time: Res<Time>,
     ) {
-        // Append the latest input event
-        for event in local_events.read() {
-            event_history.insert(event.clone(), client_tick.get(), time.delta_seconds());
-        }
         // Apply all pending inputs to latest snapshot
-        for (mut position, snapshot_buffer) in q_predicted_players.iter_mut() {
+        for (e, mut position, snapshot_buffer) in q_predicted_players.iter_mut() {
+            // Append the latest input event
+            for event in local_events.read() {
+                event_history.insert(
+                    event.clone(),
+                    (*server_ticks).get(&e).unwrap().get(),
+                    time.delta_seconds(),
+                );
+            }
+
             let mut corrected_position = snapshot_buffer.latest_snapshot().0;
             for event_snapshot in event_history.predict(snapshot_buffer.latest_snapshot_tick()) {
                 Self::apply_move_command(
