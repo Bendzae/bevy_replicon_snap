@@ -60,9 +60,9 @@ To allow a Component to be interpolated it needs to implement the traits:
 This lib provides a basic derive macro for `Interpolate` but for complex types
 you will have to implement it yourself.
 
+```rust
 use bevy_replicon_snap_macros::{Interpolate};
 
-```rust
 #[derive(Component, Deserialize, Serialize, Interpolate, Clone)] struct
 PlayerPosition(Vec2);
 ```
