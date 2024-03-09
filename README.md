@@ -1,5 +1,5 @@
 [![CI](https://github.com/Bendzae/bevy_replicon_snap/actions/workflows/rust.yml/badge.svg)](https://github.com/Bendzae/bevy_replicon_snap/actions/workflows/rust.yml)
-![crates.io](https://img.shields.io/crates/v/bevy_replicon_snap.svg)
+[![crates.io](https://img.shields.io/crates/v/bevy_replicon_snap.svg)](https://crates.io/crates/bevy_replicon_snap)
 
 # bevy_replicon_snap
 
