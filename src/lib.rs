@@ -21,17 +21,18 @@ use serde::{Deserialize, Serialize};
 pub use bevy_replicon_snap_macros;
 
 pub struct SnapshotInterpolationPlugin {
+    /// Should reflect the server max tick rate
     pub max_tick_rate: u16,
 }
 
 /// Sets for interpolation systems.
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum InterpolationSet {
-    /// Systems that initialize buffers and flag components for replicated entities.
+    /// Systems that initializes buffers and flag components for replicated entities.
     ///
     /// Runs in `PreUpdate`.
     Init,
-    /// Systems that insert data into interpolation and process interpolation.
+    /// Systems that calculating interpolation.
     ///
     /// Runs in `PreUpdate`.
     Interpolate,
