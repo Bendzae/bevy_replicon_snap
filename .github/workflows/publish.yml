@@ -1,0 +1,55 @@
+on:
+  push:
+    tags:
+      - '*'
+
+name: Publish
+
+jobs:
+  build_and_test_linux:
+    name: Build and Test (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: taiki-e/install-action@nextest
+      - name: 'Build and test'
+        run: cargo nextest run --workspace --all-targets --all-features
+
+  crates_io_publish:
+    name: Publish (crates.io)
+    needs:
+      - audit
+      - build_and_test_linux
+      - build_and_test_windows
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: cargo-release Cache
+        id: cargo_release_cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/cargo-release
+          key: ${{ runner.os }}-cargo-release
+
+      - run: cargo install cargo-release
+        if: steps.cargo_release_cache.outputs.cache-hit != 'true'
+
+      - name: cargo login
+        run: cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: "cargo release publish"
+        run: |-
+          cargo release \
+            publish \
+            --workspace \
+            --all-features \
+            --allow-branch HEAD \
+            --no-confirm \
+            --execute
