@@ -1,4 +1,4 @@
-[![Build](https://github.com/Bendzae/bevy_replicon_snap/actions/workflows/rust.yml/badge.svg?branch=main)](https://github.com/Bendzae/bevy_replicon_snap/actions/workflows/rust.yml)
+[![CI](https://github.com/Bendzae/bevy_replicon_snap/actions/workflows/rust.yml/badge.svg)](https://github.com/Bendzae/bevy_replicon_snap/actions/workflows/rust.yml)
 
 # bevy_replicon_snap
 
