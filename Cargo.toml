@@ -1,7 +1,12 @@
 [package]
 name = "bevy_replicon_snap"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
+authors = ["Ben Dzaebel <ben@bendz.dev>"]
+hompage = "bendz.dev"
+license_file = "/LICENCE"
+repository = "https://github.com/Bendzae/bevy_replicon_snap"
+categories = ["game-development", "network-programming"]
 keywords = ["networking", "bevy", "snapshot", "interpolation", "prediction"]
 description = "High-level networking crate that extends the bevy_replicon crate to allow snapshot interpolation and client-side prediction"
 
@@ -28,5 +33,3 @@ bevy = { version = "0.13.0", default-features = false, features = [
     "x11",
     "default_font",
 ] }
-# TODO remove
-bevy-inspector-egui = "0.23.3"
