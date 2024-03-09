@@ -2,6 +2,7 @@
 name = "bevy_replicon_snap_macros"
 version = "0.2.0"
 edition = "2021"
+license = "MIT"
 authors = ["Ben Dzaebel <ben@bendz.dev>"]
 repository = "https://github.com/Bendzae/bevy_replicon_snap"
 description = "Macros for bevy_replicon_snap"
@@ -13,4 +14,3 @@ proc-macro = true
 [dependencies]
 syn = "2.0"
 quote = "1.0"
-
