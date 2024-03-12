@@ -6,7 +6,10 @@ use std::{
     time::SystemTime,
 };
 
-use bevy::prelude::*;
+use bevy::{
+    prelude::*,
+    winit::{UpdateMode, WinitSettings},
+};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +32,15 @@ const MAX_TICK_RATE: u16 = 5;
 fn main() {
     App::new()
         .init_resource::<Cli>() // Parse CLI before creating window.
+        // When you run client and server on the same machine
+        // it results into different deltas
+        // because only deltas from server being used.
+        // You won't have this problem on real server.
+        // Adding this settings fixes the problem.
+        .insert_resource(WinitSettings {
+            focused_mode: UpdateMode::Continuous,
+            unfocused_mode: UpdateMode::Continuous,
+        })
         .add_plugins((
             DefaultPlugins,
             RepliconPlugins.build().set(ServerPlugin {
