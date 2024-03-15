@@ -6,7 +6,7 @@ use std::{
     time::SystemTime,
 };
 
-use bevy::prelude::*;
+use bevy::{prelude::*, winit::UpdateMode::Continuous, winit::WinitSettings};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +29,11 @@ const MAX_TICK_RATE: u16 = 5;
 fn main() {
     App::new()
         .init_resource::<Cli>() // Parse CLI before creating window.
+        // Makes the server/client update continuously even while unfocused.
+        .insert_resource(WinitSettings {
+            focused_mode: Continuous,
+            unfocused_mode: Continuous,
+        })
         .add_plugins((
             DefaultPlugins,
             RepliconPlugins.build().set(ServerPlugin {
