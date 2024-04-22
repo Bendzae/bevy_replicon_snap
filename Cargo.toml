@@ -10,7 +10,9 @@ categories = ["game-development", "network-programming"]
 keywords = ["networking", "bevy", "snapshot", "interpolation", "prediction"]
 description = "High-level networking crate that extends the bevy_replicon crate to allow snapshot interpolation and client-side prediction"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+default = ["bevy_types"]
+bevy_types = []
 
 [dependencies]
 bevy = { version = "0.13", default_features = false }

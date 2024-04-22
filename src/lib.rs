@@ -21,6 +21,9 @@ use serde::{Deserialize, Serialize};
 
 pub use bevy_replicon_snap_macros;
 
+#[cfg(feature = "bevy_types")]
+pub mod bevy_types;
+
 pub struct SnapshotInterpolationPlugin {
     /// Should reflect the server max tick rate
     pub max_tick_rate: u16,
