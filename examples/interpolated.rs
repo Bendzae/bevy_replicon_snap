@@ -19,7 +19,7 @@ use bevy_replicon_renet::{
     RenetChannelsExt, RepliconRenetPlugins,
 };
 use bevy_replicon_snap::{
-    AppInterpolationExt, Interpolated, NetworkOwner, SnapshotInterpolationPlugin,
+    interpolation::Interpolated, AppInterpolationExt, NetworkOwner, SnapshotInterpolationPlugin,
 };
 use bevy_replicon_snap_macros::Interpolate;
 use clap::Parser;

@@ -7,7 +7,7 @@ use std::{
     time::SystemTime,
 };
 
-use bevy::{prelude::*, winit::WinitSettings, winit::UpdateMode::Continuous};
+use bevy::{prelude::*, winit::UpdateMode::Continuous, winit::WinitSettings};
 use bevy_replicon::{client::ServerEntityTicks, prelude::*};
 use bevy_replicon_renet::{
     renet::{
@@ -20,8 +20,9 @@ use bevy_replicon_renet::{
     RenetChannelsExt, RepliconRenetPlugins,
 };
 use bevy_replicon_snap::{
-    AppInterpolationExt, Interpolated, NetworkOwner, OwnerPredicted, Predicted,
-    PredictedEventHistory, SnapshotBuffer, SnapshotInterpolationPlugin,
+    interpolation::Interpolated, interpolation::SnapshotBuffer, prediction::OwnerPredicted,
+    prediction::Predicted, prediction::PredictedEventHistory, AppInterpolationExt, NetworkOwner,
+    SnapshotInterpolationPlugin,
 };
 use bevy_replicon_snap_macros::Interpolate;
 use clap::Parser;
