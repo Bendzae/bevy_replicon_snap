@@ -8,10 +8,7 @@ use std::{
 };
 
 use bevy::{prelude::*, winit::UpdateMode::Continuous, winit::WinitSettings};
-use bevy_replicon::{
-    client::confirmed::{self, Confirmed},
-    prelude::*,
-};
+use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{
     renet::{
         transport::{
@@ -23,12 +20,10 @@ use bevy_replicon_renet::{
     RenetChannelsExt, RepliconRenetPlugins,
 };
 use bevy_replicon_snap::{
-    interpolation::Interpolated,
-    interpolation::SnapshotBuffer,
+    interpolation::AppInterpolationExt,
     prediction::OwnerPredicted,
-    prediction::Predicted,
-    prediction::{ApplyEvent, PredictedEventHistory},
-    AppInterpolationExt, NetworkOwner, SnapshotInterpolationPlugin,
+    prediction::{AppPredictionExt, Predict},
+    NetworkOwner, SnapshotInterpolationPlugin,
 };
 use bevy_replicon_snap_macros::Interpolate;
 use clap::Parser;
@@ -234,7 +229,7 @@ impl SimpleBoxPlugin {
     }
 }
 
-impl ApplyEvent<MoveDirection> for PlayerPosition {
+impl Predict<MoveDirection> for PlayerPosition {
     fn apply_event(&mut self, event: &MoveDirection, delta_time: f32) {
         const MOVE_SPEED: f32 = 300.0;
         self.0 += event.0 * delta_time * MOVE_SPEED;

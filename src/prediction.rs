@@ -1,22 +1,37 @@
-use std::collections::VecDeque;
-
 use bevy::{
+    app::{App, Update},
     ecs::{
         component::Component,
         entity::Entity,
         event::{Event, EventReader},
         query::{Added, With, Without},
+        schedule::{common_conditions::resource_exists, IntoSystemConfigs},
         system::{Commands, Query, Res, ResMut, Resource},
     },
     reflect::Reflect,
     time::Time,
 };
-use bevy_replicon::{client::confirmed::Confirmed, network_event::client_event::FromClient};
-use bevy_replicon_renet::renet::transport::NetcodeClientTransport;
-use serde::{Deserialize, Serialize};
+use bevy_replicon::{
+    client::confirmed::Confirmed,
+    core::{common_conditions::has_authority, replicon_channels::RepliconChannel},
+    network_event::client_event::{ClientEventAppExt, FromClient},
+};
+use bevy_replicon_renet::renet::{transport::NetcodeClientTransport, RenetClient};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::vec_deque::Iter;
+use std::collections::VecDeque;
+use std::fmt::Debug;
 
-use crate::{interpolation::SnapshotBuffer, Interpolate, Interpolated, NetworkOwner};
+use crate::{
+    interpolation::Interpolate, interpolation::SnapshotBuffer, Interpolated, NetworkOwner,
+};
+
+pub trait Predict<E: Event>
+where
+    Self: Component + Interpolate,
+{
+    fn apply_event(&mut self, event: &E, delta_time: f32);
+}
 
 pub struct EventSnapshot<T: Event> {
     pub value: T,
@@ -89,15 +104,8 @@ pub fn predicted_snapshot_system<T: Component + Interpolate + Clone>(
     }
 }
 
-pub trait ApplyEvent<E: Event>
-where
-    Self: Component + Interpolate,
-{
-    fn apply_event(&mut self, event: &E, delta_time: f32);
-}
-
 /// Server implementation
-pub fn server_update_system<E: Event, C: Component + Interpolate + ApplyEvent<E> + Clone>(
+pub fn server_update_system<E: Event, C: Component + Interpolate + Predict<E> + Clone>(
     time: Res<Time>,
     mut move_events: EventReader<FromClient<E>>,
     mut subjects: Query<(&NetworkOwner, &mut C), Without<Predicted>>,
@@ -114,7 +122,7 @@ pub fn server_update_system<E: Event, C: Component + Interpolate + ApplyEvent<E>
 // Client prediction implementation
 pub fn predicted_update_system<
     E: Event + Clone,
-    C: Component + Interpolate + ApplyEvent<E> + Clone,
+    C: Component + Interpolate + Predict<E> + Clone,
 >(
     mut q_predicted_players: Query<
         (Entity, &mut C, &SnapshotBuffer<C>, &Confirmed),
@@ -140,5 +148,43 @@ pub fn predicted_update_system<
             corrected_component.apply_event(&event_snapshot.value, event_snapshot.delta_time);
         }
         *component = corrected_component;
+    }
+}
+
+pub trait AppPredictionExt {
+    /// TODO: Add docs
+    fn add_client_predicted_event<E>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
+    where
+        E: Event + Serialize + DeserializeOwned + Debug + Clone;
+
+    /// TODO: Add docs
+    fn predict_event_for_component<E, C>(&mut self) -> &mut Self
+    where
+        E: Event + Serialize + DeserializeOwned + Debug + Clone,
+        C: Component + Predict<E> + Clone;
+}
+
+impl AppPredictionExt for App {
+    fn add_client_predicted_event<E>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
+    where
+        E: Event + Serialize + DeserializeOwned + Debug + Clone,
+    {
+        let history: PredictedEventHistory<E> = PredictedEventHistory::new();
+        self.insert_resource(history);
+        self.add_client_event::<E>(channel)
+    }
+
+    fn predict_event_for_component<E, C>(&mut self) -> &mut Self
+    where
+        E: Event + Serialize + DeserializeOwned + Debug + Clone,
+        C: Component + Predict<E> + Clone,
+    {
+        self.add_systems(
+            Update,
+            (
+                server_update_system::<E, C>.run_if(has_authority), // Runs only on the server or a single player.
+                predicted_update_system::<E, C>.run_if(resource_exists::<RenetClient>), // Runs only on clients.
+            ),
+        )
     }
 }
