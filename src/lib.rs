@@ -1,28 +1,15 @@
 use std::fmt::Debug;
-use std::io::Cursor;
 
 use bevy::prelude::*;
-use bevy_replicon::core::replication_fns::{
-    ctx::{RemoveCtx, WriteCtx},
-    rule_fns::RuleFns,
-};
-use bevy_replicon::core::replicon_channels::RepliconChannel;
 use bevy_replicon::prelude::*;
-use bevy_replicon::{bincode, core::command_markers::MarkerConfig};
-use bevy_replicon_renet::renet::{transport::NetcodeClientTransport, RenetClient};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use bevy_replicon_renet::renet::transport::NetcodeClientTransport;
+use serde::{Deserialize, Serialize};
 
 pub use bevy_replicon_snap_macros;
 
 use crate::{
-    interpolation::{
-        snapshot_interpolation_system, Interpolate, Interpolated, SnapshotBuffer,
-        SnapshotInterpolationConfig,
-    },
-    prediction::{
-        owner_prediction_init_system, predicted_snapshot_system, OwnerPredicted, Predicted,
-        PredictedEventHistory,
-    },
+    interpolation::{Interpolated, SnapshotInterpolationConfig},
+    prediction::{owner_prediction_init_system, OwnerPredicted, Predicted},
 };
 
 pub mod interpolation;
@@ -32,6 +19,9 @@ pub struct SnapshotInterpolationPlugin {
     /// Should reflect the server max tick rate
     pub max_tick_rate: u16,
 }
+
+#[derive(Component, Deserialize, Serialize, Reflect)]
+pub struct NetworkOwner(pub u64);
 
 /// Sets for interpolation systems.
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone, Copy)]
@@ -69,103 +59,5 @@ impl Plugin for SnapshotInterpolationPlugin {
             .insert_resource(SnapshotInterpolationConfig {
                 max_tick_rate: self.max_tick_rate,
             });
-    }
-}
-
-#[derive(Component, Deserialize, Serialize, Reflect)]
-pub struct NetworkOwner(pub u64);
-
-#[derive(Component)]
-pub struct RecordSnapshotsMarker;
-
-/// Add a marker to all components requiring a snapshot buffer
-pub fn snapshot_buffer_init_system<T: Component + Interpolate + Clone>(
-    q_new: Query<(Entity, &T), Or<(Added<Predicted>, Added<Interpolated>)>>,
-    mut commands: Commands,
-) {
-    for (e, _v) in q_new.iter() {
-        commands.entity(e).insert(RecordSnapshotsMarker);
-    }
-}
-
-pub fn write_snap_component<C: Clone + Interpolate + Component + DeserializeOwned>(
-    ctx: &mut WriteCtx,
-    rule_fns: &RuleFns<C>,
-    entity: &mut EntityMut,
-    cursor: &mut Cursor<&[u8]>,
-) -> bincode::Result<()> {
-    let component: C = rule_fns.deserialize(ctx, cursor)?;
-    if let Some(mut buffer) = entity.get_mut::<SnapshotBuffer<C>>() {
-        buffer.insert(component, ctx.message_tick.get());
-    } else {
-        let mut buffer = SnapshotBuffer::new();
-        buffer.insert(component, ctx.message_tick.get());
-        ctx.commands.entity(entity.id()).insert(buffer);
-    }
-
-    Ok(())
-}
-
-fn remove_snap_component<C: Clone + Interpolate + Component + DeserializeOwned>(
-    ctx: &mut RemoveCtx,
-    entity: &mut EntityMut,
-) {
-    ctx.commands
-        .entity(entity.id())
-        .remove::<SnapshotBuffer<C>>()
-        .remove::<C>();
-}
-
-pub trait AppInterpolationExt {
-    /// TODO: Add docs
-    fn replicate_interpolated<C>(&mut self) -> &mut Self
-    where
-        C: Component + Interpolate + Clone + Serialize + DeserializeOwned;
-
-    /// TODO: Add docs
-    fn add_client_predicted_event<C>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
-    where
-        C: Event + Serialize + DeserializeOwned + Debug + Clone;
-}
-
-impl AppInterpolationExt for App {
-    fn replicate_interpolated<T>(&mut self) -> &mut Self
-    where
-        T: Component + Interpolate + Clone + Serialize + DeserializeOwned,
-    {
-        self.add_systems(
-            PreUpdate,
-            (snapshot_buffer_init_system::<T>.after(owner_prediction_init_system))
-                .in_set(InterpolationSet::Init)
-                .run_if(resource_exists::<RenetClient>),
-        );
-        self.add_systems(
-            PreUpdate,
-            (
-                snapshot_interpolation_system::<T>,
-                predicted_snapshot_system::<T>,
-            )
-                .chain()
-                .in_set(InterpolationSet::Interpolate)
-                .run_if(resource_exists::<RenetClient>),
-        )
-        .replicate::<T>()
-        .register_marker_with::<RecordSnapshotsMarker>(MarkerConfig {
-            need_history: true,
-            ..default()
-        })
-        .set_marker_fns::<RecordSnapshotsMarker, T>(
-            write_snap_component::<T>,
-            remove_snap_component::<T>,
-        )
-    }
-
-    fn add_client_predicted_event<C>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
-    where
-        C: Event + Serialize + DeserializeOwned + Debug + Clone,
-    {
-        let history: PredictedEventHistory<C> = PredictedEventHistory::new();
-        self.insert_resource(history);
-        self.add_client_event::<C>(channel)
     }
 }

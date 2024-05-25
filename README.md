@@ -66,7 +66,7 @@ you will have to implement it yourself.
 ```rust
 use bevy_replicon_snap_macros::{Interpolate};
 
-#[derive(Component, Deserialize, Serialize, Interpolate, Clone)] 
+#[derive(Component, Deserialize, Serialize, Interpolate, Clone)]
 struct PlayerPosition(Vec2);
 ```
 
@@ -84,7 +84,7 @@ interpolated.
 ```rust
 commands.spawn((
     PlayerPosition(Vec2::ZERO),
-    Replication,
+    Replicated,
     Interpolated,
     ...
 ));
@@ -92,7 +92,37 @@ commands.spawn((
 
 ### Client-Side Prediction
 
-Coming soon.. In the meantime check the "predicted" example!
+To use client side prediction you need to implement the `Predict` trait for any component and event combination to specify
+how a event would mutate a component. This library will then use this implementation to generate respevtive server and client systems
+that take care of predicting changes on client-side and correcting them should the server result be different.
+
+```rust
+impl Predict<MoveDirection> for PlayerPosition {
+    fn apply_event(&mut self, event: &MoveDirection, delta_time: f32) {
+        const MOVE_SPEED: f32 = 300.0;
+        self.0 += event.0 * delta_time * MOVE_SPEED;
+    }
+}
+```
+
+Additionally you need to register the Event as a predicted event aswell as the event and component combination:
+
+```rust
+app
+   .add_client_predicted_event::<MoveDirection>(ChannelKind::Ordered)
+   .predict_event_for_component::<MoveDirection, PlayerPosition>()
+```
+
+Finally, make sure the entities that should be predicted have the `OwnerPredicted` component:
+
+```rust
+commands.spawn((
+    PlayerPosition(Vec2::ZERO),
+    Replicated,
+    OwnerPredicted,
+    ...
+));
+```
 
 ## Alternatives
 

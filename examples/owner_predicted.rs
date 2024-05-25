@@ -8,10 +8,7 @@ use std::{
 };
 
 use bevy::{prelude::*, winit::UpdateMode::Continuous, winit::WinitSettings};
-use bevy_replicon::{
-    client::confirmed::{self, Confirmed},
-    prelude::*,
-};
+use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{
     renet::{
         transport::{
@@ -23,9 +20,10 @@ use bevy_replicon_renet::{
     RenetChannelsExt, RepliconRenetPlugins,
 };
 use bevy_replicon_snap::{
-    interpolation::Interpolated, interpolation::SnapshotBuffer, prediction::OwnerPredicted,
-    prediction::Predicted, prediction::PredictedEventHistory, AppInterpolationExt, NetworkOwner,
-    SnapshotInterpolationPlugin,
+    interpolation::AppInterpolationExt,
+    prediction::OwnerPredicted,
+    prediction::{AppPredictionExt, Predict},
+    NetworkOwner, SnapshotInterpolationPlugin,
 };
 use bevy_replicon_snap_macros::Interpolate;
 use clap::Parser;
@@ -65,6 +63,7 @@ impl Plugin for SimpleBoxPlugin {
         app.replicate_interpolated::<PlayerPosition>()
             .replicate::<PlayerColor>()
             .add_client_predicted_event::<MoveDirection>(ChannelKind::Ordered)
+            .predict_event_for_component::<MoveDirection, PlayerPosition>()
             .add_systems(
                 Startup,
                 (Self::cli_system.map(Result::unwrap), Self::init_system),
@@ -72,8 +71,6 @@ impl Plugin for SimpleBoxPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::movement_system.run_if(has_authority), // Runs only on the server or a single player.
-                    Self::predicted_movement_system.run_if(resource_exists::<RenetClient>), // Runs only on clients.
                     Self::server_event_system.run_if(resource_exists::<RenetServer>), // Runs only on the server.
                     (Self::draw_boxes_system, Self::input_system),
                 ),
@@ -230,64 +227,12 @@ impl SimpleBoxPlugin {
             move_events.send(MoveDirection(direction.normalize_or_zero()));
         }
     }
+}
 
-    /// Mutates [`PlayerPosition`] based on [`MoveCommandEvents`].
-    /// Server implementation
-    fn movement_system(
-        time: Res<Time>,
-        mut move_events: EventReader<FromClient<MoveDirection>>,
-        mut players: Query<(&NetworkOwner, &mut PlayerPosition), Without<Predicted>>,
-    ) {
-        for FromClient { client_id, event } in move_events.read() {
-            for (player, mut position) in &mut players {
-                if client_id.get() == player.0 {
-                    Self::apply_move_command(&mut *position, event, time.delta_seconds())
-                }
-            }
-        }
-    }
-
-    // Client prediction implementation
-    fn predicted_movement_system(
-        mut q_predicted_players: Query<
-            (
-                Entity,
-                &mut PlayerPosition,
-                &SnapshotBuffer<PlayerPosition>,
-                &Confirmed,
-            ),
-            (With<Predicted>, Without<Interpolated>),
-        >,
-        mut local_events: EventReader<MoveDirection>,
-        mut event_history: ResMut<PredictedEventHistory<MoveDirection>>,
-        time: Res<Time>,
-    ) {
-        // Apply all pending inputs to latest snapshot
-        for (e, mut position, snapshot_buffer, confirmed) in q_predicted_players.iter_mut() {
-            // Append the latest input event
-            for event in local_events.read() {
-                event_history.insert(
-                    event.clone(),
-                    confirmed.last_tick().get(),
-                    time.delta_seconds(),
-                );
-            }
-
-            let mut corrected_position = snapshot_buffer.latest_snapshot().0;
-            for event_snapshot in event_history.predict(snapshot_buffer.latest_snapshot_tick()) {
-                Self::apply_move_command(
-                    &mut corrected_position,
-                    &event_snapshot.value,
-                    event_snapshot.delta_time,
-                );
-            }
-            position.0 = corrected_position;
-        }
-    }
-
-    fn apply_move_command(position: &mut Vec2, event: &MoveDirection, delta_time: f32) {
+impl Predict<MoveDirection> for PlayerPosition {
+    fn apply_event(&mut self, event: &MoveDirection, delta_time: f32) {
         const MOVE_SPEED: f32 = 300.0;
-        *position += event.0 * delta_time * MOVE_SPEED;
+        self.0 += event.0 * delta_time * MOVE_SPEED;
     }
 }
 
