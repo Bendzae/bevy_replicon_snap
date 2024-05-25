@@ -3,14 +3,12 @@ use std::collections::VecDeque;
 use bevy::{
     ecs::{
         component::Component,
-        entity::Entity,
-        query::{Added, Or, With, Without},
-        system::{Commands, Query, Res, Resource},
+        query::{With, Without},
+        system::{Query, Res, Resource},
     },
     reflect::Reflect,
     time::Time,
 };
-use bevy_replicon::client::ServerEntityTicks;
 use serde::{Deserialize, Serialize};
 
 use crate::prediction::Predicted;
@@ -67,21 +65,6 @@ impl<T: Component + Interpolate + Clone> SnapshotBuffer<T> {
 
     pub fn age(&self) -> f32 {
         self.time_since_last_snapshot
-    }
-}
-
-/// Initialize snapshot buffers for new entities.
-pub fn snapshot_buffer_init_system<T: Component + Interpolate + Clone>(
-    q_new: Query<(Entity, &T), Or<(Added<Predicted>, Added<Interpolated>)>>,
-    mut commands: Commands,
-    server_ticks: Res<ServerEntityTicks>,
-) {
-    for (e, initial_value) in q_new.iter() {
-        if let Some(tick) = (*server_ticks).get(&e) {
-            let mut buffer = SnapshotBuffer::new();
-            buffer.insert(initial_value.clone(), tick.get());
-            commands.entity(e).insert(buffer);
-        }
     }
 }
 

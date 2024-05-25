@@ -2,26 +2,22 @@ use std::fmt::Debug;
 use std::io::Cursor;
 
 use bevy::prelude::*;
-use bevy_replicon::bincode;
-use bevy_replicon::bincode::deserialize_from;
-use bevy_replicon::client::client_mapper::ServerEntityMap;
-use bevy_replicon::core::replication_rules;
-use bevy_replicon::core::replication_rules::{
-    serialize_component, DeserializeFn, RemoveComponentFn, SerializeFn,
+use bevy_replicon::core::replication_fns::{
+    ctx::{RemoveCtx, WriteCtx},
+    rule_fns::RuleFns,
 };
 use bevy_replicon::core::replicon_channels::RepliconChannel;
-use bevy_replicon::core::replicon_tick::RepliconTick;
 use bevy_replicon::prelude::*;
+use bevy_replicon::{bincode, core::command_markers::MarkerConfig};
 use bevy_replicon_renet::renet::{transport::NetcodeClientTransport, RenetClient};
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 pub use bevy_replicon_snap_macros;
 
 use crate::{
     interpolation::{
-        snapshot_buffer_init_system, snapshot_interpolation_system, Interpolate, Interpolated,
-        SnapshotBuffer, SnapshotInterpolationConfig,
+        snapshot_interpolation_system, Interpolate, Interpolated, SnapshotBuffer,
+        SnapshotInterpolationConfig,
     },
     prediction::{
         owner_prediction_init_system, predicted_snapshot_system, OwnerPredicted, Predicted,
@@ -79,20 +75,45 @@ impl Plugin for SnapshotInterpolationPlugin {
 #[derive(Component, Deserialize, Serialize, Reflect)]
 pub struct NetworkOwner(pub u64);
 
-pub fn deserialize_snap_component<C: Clone + Interpolate + Component + DeserializeOwned>(
-    entity: &mut EntityWorldMut,
-    _entity_map: &mut ServerEntityMap,
+#[derive(Component)]
+pub struct RecordSnapshotsMarker;
+
+/// Add a marker to all components requiring a snapshot buffer
+pub fn snapshot_buffer_init_system<T: Component + Interpolate + Clone>(
+    q_new: Query<(Entity, &T), Or<(Added<Predicted>, Added<Interpolated>)>>,
+    mut commands: Commands,
+) {
+    for (e, _v) in q_new.iter() {
+        commands.entity(e).insert(RecordSnapshotsMarker);
+    }
+}
+
+pub fn write_snap_component<C: Clone + Interpolate + Component + DeserializeOwned>(
+    ctx: &mut WriteCtx,
+    rule_fns: &RuleFns<C>,
+    entity: &mut EntityMut,
     cursor: &mut Cursor<&[u8]>,
-    tick: RepliconTick,
 ) -> bincode::Result<()> {
-    let component: C = deserialize_from(cursor)?;
+    let component: C = rule_fns.deserialize(ctx, cursor)?;
     if let Some(mut buffer) = entity.get_mut::<SnapshotBuffer<C>>() {
-        buffer.insert(component, tick.get());
+        buffer.insert(component, ctx.message_tick.get());
     } else {
-        entity.insert(component);
+        let mut buffer = SnapshotBuffer::new();
+        buffer.insert(component, ctx.message_tick.get());
+        ctx.commands.entity(entity.id()).insert(buffer);
     }
 
     Ok(())
+}
+
+fn remove_snap_component<C: Clone + Interpolate + Component + DeserializeOwned>(
+    ctx: &mut RemoveCtx,
+    entity: &mut EntityMut,
+) {
+    ctx.commands
+        .entity(entity.id())
+        .remove::<SnapshotBuffer<C>>()
+        .remove::<C>();
 }
 
 pub trait AppInterpolationExt {
@@ -102,48 +123,23 @@ pub trait AppInterpolationExt {
         C: Component + Interpolate + Clone + Serialize + DeserializeOwned;
 
     /// TODO: Add docs
-    fn replicate_interpolated_with<C>(
-        &mut self,
-        serialize: SerializeFn,
-        deserialize: DeserializeFn,
-        remove: RemoveComponentFn,
-    ) -> &mut Self
-    where
-        C: Component + Interpolate + Clone;
-
     fn add_client_predicted_event<C>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
     where
         C: Event + Serialize + DeserializeOwned + Debug + Clone;
 }
 
 impl AppInterpolationExt for App {
-    fn replicate_interpolated<C>(&mut self) -> &mut Self
+    fn replicate_interpolated<T>(&mut self) -> &mut Self
     where
-        C: Component + Interpolate + Clone + Serialize + DeserializeOwned,
-    {
-        self.replicate_interpolated_with::<C>(
-            serialize_component::<C>,
-            deserialize_snap_component::<C>,
-            replication_rules::remove_component::<C>,
-        )
-    }
-
-    fn replicate_interpolated_with<T>(
-        &mut self,
-        serialize: SerializeFn,
-        deserialize: DeserializeFn,
-        remove: RemoveComponentFn,
-    ) -> &mut Self
-    where
-        T: Component + Interpolate + Clone,
+        T: Component + Interpolate + Clone + Serialize + DeserializeOwned,
     {
         self.add_systems(
             PreUpdate,
             (snapshot_buffer_init_system::<T>.after(owner_prediction_init_system))
                 .in_set(InterpolationSet::Init)
                 .run_if(resource_exists::<RenetClient>),
-        )
-        .add_systems(
+        );
+        self.add_systems(
             PreUpdate,
             (
                 snapshot_interpolation_system::<T>,
@@ -152,8 +148,16 @@ impl AppInterpolationExt for App {
                 .chain()
                 .in_set(InterpolationSet::Interpolate)
                 .run_if(resource_exists::<RenetClient>),
-        );
-        self.replicate_with::<T>(serialize, deserialize, remove)
+        )
+        .replicate::<T>()
+        .register_marker_with::<RecordSnapshotsMarker>(MarkerConfig {
+            need_history: true,
+            ..default()
+        })
+        .set_marker_fns::<RecordSnapshotsMarker, T>(
+            write_snap_component::<T>,
+            remove_snap_component::<T>,
+        )
     }
 
     fn add_client_predicted_event<C>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
