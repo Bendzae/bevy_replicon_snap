@@ -26,6 +26,8 @@ use crate::{
     interpolation::Interpolate, interpolation::SnapshotBuffer, Interpolated, NetworkOwner,
 };
 
+/// This trait defines how an event will mutate a given component
+/// and is required for prediction.
 pub trait Predict<E: Event>
 where
     Self: Component + Interpolate,
@@ -152,12 +154,15 @@ pub fn predicted_update_system<
 }
 
 pub trait AppPredictionExt {
-    /// TODO: Add docs
+    /// Register an event for client-side prediction, this will make sure a history of past events
+    /// is stored for the client to be able to replay them in case of a server correction
     fn add_client_predicted_event<E>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
     where
         E: Event + Serialize + DeserializeOwned + Debug + Clone;
 
-    /// TODO: Add docs
+    /// Register a component and event pair for prediction.
+    /// This will generate serverside and clientside systems that use the implementation from the
+    /// `Predict` trait to allow prediction and serverside correction
     fn predict_event_for_component<E, C>(&mut self) -> &mut Self
     where
         E: Event + Serialize + DeserializeOwned + Debug + Clone,

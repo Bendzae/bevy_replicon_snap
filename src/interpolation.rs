@@ -154,7 +154,8 @@ fn remove_snap_component<C: Clone + Interpolate + Component + DeserializeOwned>(
         .remove::<C>();
 }
 pub trait AppInterpolationExt {
-    /// TODO: Add docs
+    /// Register a component to be replicated and interpolated between server updates
+    /// Requires the component to implement the Interpolate trait
     fn replicate_interpolated<C>(&mut self) -> &mut Self
     where
         C: Component + Interpolate + Clone + Serialize + DeserializeOwned;
