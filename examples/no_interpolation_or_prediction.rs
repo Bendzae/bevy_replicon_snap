@@ -269,7 +269,7 @@ struct PlayerBundle {
     player: Player,
     position: PlayerPosition,
     color: PlayerColor,
-    replication: Replication,
+    replicated: Replicated,
 }
 
 impl PlayerBundle {
@@ -278,7 +278,7 @@ impl PlayerBundle {
             player: Player(client_id),
             position: PlayerPosition(position),
             color: PlayerColor(color),
-            replication: Replication,
+            replicated: Replicated,
         }
     }
 }

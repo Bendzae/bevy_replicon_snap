@@ -19,7 +19,7 @@ use bevy_replicon_renet::{
     RenetChannelsExt, RepliconRenetPlugins,
 };
 use bevy_replicon_snap::{
-    AppInterpolationExt, Interpolated, NetworkOwner, SnapshotInterpolationPlugin,
+    interpolation::Interpolated, AppInterpolationExt, NetworkOwner, SnapshotInterpolationPlugin,
 };
 use bevy_replicon_snap_macros::Interpolate;
 use clap::Parser;
@@ -274,7 +274,7 @@ struct PlayerBundle {
     owner: NetworkOwner,
     position: PlayerPosition,
     color: PlayerColor,
-    replication: Replication,
+    replicated: Replicated,
     interpolated: Interpolated,
 }
 
@@ -284,7 +284,7 @@ impl PlayerBundle {
             owner: NetworkOwner(id.get()),
             position: PlayerPosition(position),
             color: PlayerColor(color),
-            replication: Replication,
+            replicated: Replicated,
             interpolated: Interpolated,
         }
     }

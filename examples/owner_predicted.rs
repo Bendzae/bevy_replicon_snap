@@ -7,8 +7,11 @@ use std::{
     time::SystemTime,
 };
 
-use bevy::{prelude::*, winit::WinitSettings, winit::UpdateMode::Continuous};
-use bevy_replicon::{client::ServerEntityTicks, prelude::*};
+use bevy::{prelude::*, winit::UpdateMode::Continuous, winit::WinitSettings};
+use bevy_replicon::{
+    client::confirmed::{self, Confirmed},
+    prelude::*,
+};
 use bevy_replicon_renet::{
     renet::{
         transport::{
@@ -20,8 +23,9 @@ use bevy_replicon_renet::{
     RenetChannelsExt, RepliconRenetPlugins,
 };
 use bevy_replicon_snap::{
-    AppInterpolationExt, Interpolated, NetworkOwner, OwnerPredicted, Predicted,
-    PredictedEventHistory, SnapshotBuffer, SnapshotInterpolationPlugin,
+    interpolation::Interpolated, interpolation::SnapshotBuffer, prediction::OwnerPredicted,
+    prediction::Predicted, prediction::PredictedEventHistory, AppInterpolationExt, NetworkOwner,
+    SnapshotInterpolationPlugin,
 };
 use bevy_replicon_snap_macros::Interpolate;
 use clap::Parser;
@@ -246,21 +250,25 @@ impl SimpleBoxPlugin {
     // Client prediction implementation
     fn predicted_movement_system(
         mut q_predicted_players: Query<
-            (Entity, &mut PlayerPosition, &SnapshotBuffer<PlayerPosition>),
+            (
+                Entity,
+                &mut PlayerPosition,
+                &SnapshotBuffer<PlayerPosition>,
+                &Confirmed,
+            ),
             (With<Predicted>, Without<Interpolated>),
         >,
         mut local_events: EventReader<MoveDirection>,
         mut event_history: ResMut<PredictedEventHistory<MoveDirection>>,
-        server_ticks: Res<ServerEntityTicks>,
         time: Res<Time>,
     ) {
         // Apply all pending inputs to latest snapshot
-        for (e, mut position, snapshot_buffer) in q_predicted_players.iter_mut() {
+        for (e, mut position, snapshot_buffer, confirmed) in q_predicted_players.iter_mut() {
             // Append the latest input event
             for event in local_events.read() {
                 event_history.insert(
                     event.clone(),
-                    (*server_ticks).get(&e).unwrap().get(),
+                    confirmed.last_tick().get(),
                     time.delta_seconds(),
                 );
             }
@@ -313,7 +321,7 @@ struct PlayerBundle {
     owner: NetworkOwner,
     position: PlayerPosition,
     color: PlayerColor,
-    replication: Replication,
+    replicated: Replicated,
     owner_predicted: OwnerPredicted,
 }
 
@@ -323,7 +331,7 @@ impl PlayerBundle {
             owner: NetworkOwner(id.get()),
             position: PlayerPosition(position),
             color: PlayerColor(color),
-            replication: Replication,
+            replicated: Replicated,
             owner_predicted: OwnerPredicted,
         }
     }
