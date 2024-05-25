@@ -20,8 +20,8 @@ use crate::{
         SnapshotInterpolationConfig,
     },
     prediction::{
-        owner_prediction_init_system, predicted_snapshot_system, OwnerPredicted, Predicted,
-        PredictedEventHistory,
+        owner_prediction_init_system, predicted_snapshot_system, predicted_update_system,
+        server_update_system, ApplyEvent, OwnerPredicted, Predicted, PredictedEventHistory,
     },
 };
 
@@ -123,9 +123,15 @@ pub trait AppInterpolationExt {
         C: Component + Interpolate + Clone + Serialize + DeserializeOwned;
 
     /// TODO: Add docs
-    fn add_client_predicted_event<C>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
+    fn add_client_predicted_event<E>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
     where
-        C: Event + Serialize + DeserializeOwned + Debug + Clone;
+        E: Event + Serialize + DeserializeOwned + Debug + Clone;
+
+    /// TODO: Add docs
+    fn predict_event_for_component<E, C>(&mut self) -> &mut Self
+    where
+        E: Event + Serialize + DeserializeOwned + Debug + Clone,
+        C: Component + ApplyEvent<E> + Clone;
 }
 
 impl AppInterpolationExt for App {
@@ -160,12 +166,26 @@ impl AppInterpolationExt for App {
         )
     }
 
-    fn add_client_predicted_event<C>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
+    fn add_client_predicted_event<E>(&mut self, channel: impl Into<RepliconChannel>) -> &mut Self
     where
-        C: Event + Serialize + DeserializeOwned + Debug + Clone,
+        E: Event + Serialize + DeserializeOwned + Debug + Clone,
     {
-        let history: PredictedEventHistory<C> = PredictedEventHistory::new();
+        let history: PredictedEventHistory<E> = PredictedEventHistory::new();
         self.insert_resource(history);
-        self.add_client_event::<C>(channel)
+        self.add_client_event::<E>(channel)
+    }
+
+    fn predict_event_for_component<E, C>(&mut self) -> &mut Self
+    where
+        E: Event + Serialize + DeserializeOwned + Debug + Clone,
+        C: Component + ApplyEvent<E> + Clone,
+    {
+        self.add_systems(
+            Update,
+            (
+                server_update_system::<E, C>.run_if(has_authority), // Runs only on the server or a single player.
+                predicted_update_system::<E, C>.run_if(resource_exists::<RenetClient>), // Runs only on clients.
+            ),
+        )
     }
 }
