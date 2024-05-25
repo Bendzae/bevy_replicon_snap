@@ -7,7 +7,6 @@ use std::{
 };
 
 use bevy::{prelude::*, winit::UpdateMode::Continuous, winit::WinitSettings};
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{
     renet::{
@@ -48,7 +47,6 @@ fn main() {
             SnapshotInterpolationPlugin {
                 max_tick_rate: MAX_TICK_RATE,
             },
-            WorldInspectorPlugin::default(),
             SimpleBoxPlugin,
         ))
         .run();

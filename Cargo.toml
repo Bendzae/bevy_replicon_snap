@@ -33,4 +33,3 @@ bevy = { version = "0.13.0", default-features = false, features = [
     "x11",
     "default_font",
 ] }
-bevy-inspector-egui = "0.24.0"
