@@ -1,6 +1,7 @@
 //! This is the "Simple Box" example from the bevy_replicon repo with owner predicted players
 //! This means the local player is predicted and other networked entities are interpolated
 
+use core::f32;
 use std::{
     error::Error,
     net::{IpAddr, Ipv4Addr, SocketAddr, UdpSocket},
@@ -63,7 +64,7 @@ impl Plugin for SimpleBoxPlugin {
         app.replicate_interpolated::<PlayerPosition>()
             .replicate::<PlayerColor>()
             .add_client_predicted_event::<MoveDirection>(ChannelKind::Ordered)
-            .predict_event_for_component::<MoveDirection, PlayerPosition>()
+            .predict_event_for_component::<MoveDirection, MovementSystemContext, PlayerPosition>()
             .add_systems(
                 Startup,
                 (Self::cli_system.map(Result::unwrap), Self::init_system),
@@ -229,10 +230,19 @@ impl SimpleBoxPlugin {
     }
 }
 
-impl Predict<MoveDirection> for PlayerPosition {
-    fn apply_event(&mut self, event: &MoveDirection, delta_time: f32) {
-        const MOVE_SPEED: f32 = 300.0;
-        self.0 += event.0 * delta_time * MOVE_SPEED;
+#[derive(Component, Serialize, Deserialize)]
+struct MovementSystemContext {
+    pub move_speed: f32,
+}
+
+impl Predict<MoveDirection, MovementSystemContext> for PlayerPosition {
+    fn apply_event(
+        &mut self,
+        event: &MoveDirection,
+        delta_time: f32,
+        context: &MovementSystemContext,
+    ) {
+        self.0 += event.0 * delta_time * context.move_speed;
     }
 }
 
@@ -268,6 +278,7 @@ struct PlayerBundle {
     color: PlayerColor,
     replicated: Replicated,
     owner_predicted: OwnerPredicted,
+    movement_system_context: MovementSystemContext,
 }
 
 impl PlayerBundle {
@@ -278,6 +289,7 @@ impl PlayerBundle {
             color: PlayerColor(color),
             replicated: Replicated,
             owner_predicted: OwnerPredicted,
+            movement_system_context: MovementSystemContext { move_speed: 200.0 },
         }
     }
 }
