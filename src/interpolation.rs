@@ -18,10 +18,8 @@ use bevy_replicon::{
     bincode,
     core::{
         command_markers::{AppMarkerExt, MarkerConfig},
-        replication_fns::{
-            ctx::{RemoveCtx, WriteCtx},
-            rule_fns::RuleFns,
-        },
+        ctx::{RemoveCtx, WriteCtx},
+        replication_registry::rule_fns::RuleFns,
         replication_rules::AppRuleExt,
     },
 };

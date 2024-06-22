@@ -12,12 +12,13 @@ use bevy::{
     time::Time,
 };
 use bevy_replicon::{
-    client::confirmed::Confirmed,
-    core::{
-        common_conditions::has_authority, replication_rules::AppRuleExt,
-        replicon_channels::RepliconChannel,
+    client::{
+        confirm_history::ConfirmHistory,
+        events::{ClientEventAppExt, FromClient},
     },
-    network_event::client_event::{ClientEventAppExt, FromClient},
+    core::{
+        channels::RepliconChannel, common_conditions::has_authority, replication_rules::AppRuleExt,
+    },
 };
 use bevy_replicon_renet::renet::{transport::NetcodeClientTransport, RenetClient};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -135,7 +136,7 @@ pub fn predicted_update_system<
     C: Component + Interpolate + Predict<E, T> + Clone,
 >(
     mut q_predicted_players: Query<
-        (&mut C, &SnapshotBuffer<C>, &Confirmed, &T),
+        (&mut C, &SnapshotBuffer<C>, &ConfirmHistory, &T),
         (With<Predicted>, Without<Interpolated>),
     >,
     mut local_events: EventReader<E>,

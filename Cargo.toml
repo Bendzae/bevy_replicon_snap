@@ -1,6 +1,6 @@
 [package]
 name = "bevy_replicon_snap"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2021"
 authors = ["Ben Dzaebel <ben@bendz.dev>"]
 hompage = "bendz.dev"
@@ -14,15 +14,15 @@ description = "High-level networking crate that extends the bevy_replicon crate 
 
 [dependencies]
 bevy = { version = "0.13", default_features = false }
-bevy_replicon = "0.25.3"
-bevy_replicon_renet = "0.2.0"
+bevy_replicon = "0.26.3"
+bevy_replicon_renet = "0.3.0"
 serde = "1.0"
 
 bevy_replicon_snap_macros = { version = "0.2.0", path = "macros" }
 
 [dev-dependencies]
 clap = { version = "4.1", features = ["derive"] }
-bevy = { version = "0.13.0", default-features = false, features = [
+bevy = { version = "0.13", default-features = false, features = [
     "bevy_asset",
     "bevy_core_pipeline",
     "bevy_render",
