@@ -33,3 +33,9 @@ bevy = { version = "0.13.0", default-features = false, features = [
     "x11",
     "default_font",
 ] }
+
+[package.metadata.commands]
+example_interpolation = "cargo run --example interpolated -- server & cargo run --example interpolated -- client && fg"
+example_interpolation_add_client = "cargo run --example interpolated -- client && fg"
+example_prediction = "cargo run --example owner_predicted -- server & cargo run --example owner_predicted -- client && fg"
+example_prediction_add_client = "cargo run --example owner_predicted -- client && fg"
