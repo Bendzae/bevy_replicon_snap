@@ -2,7 +2,6 @@ use std::fmt::Debug;
 
 use bevy::prelude::*;
 use bevy_replicon::prelude::*;
-use bevy_replicon_renet::renet::transport::NetcodeClientTransport;
 use serde::{Deserialize, Serialize};
 
 pub use bevy_replicon_snap_macros;
@@ -53,7 +52,7 @@ impl Plugin for SnapshotInterpolationPlugin {
             .add_systems(
                 Update,
                 owner_prediction_init_system
-                    .run_if(resource_exists::<NetcodeClientTransport>)
+                    .run_if(client_connected)
                     .in_set(InterpolationSet::Init),
             )
             .insert_resource(SnapshotInterpolationConfig {

@@ -5,22 +5,22 @@ use bevy::{
         entity::Entity,
         event::{Event, EventReader},
         query::{Added, With, Without},
-        schedule::{common_conditions::resource_exists, IntoSystemConfigs},
+        schedule::IntoSystemConfigs,
         system::{Commands, Query, Res, ResMut, Resource},
     },
     reflect::Reflect,
     time::Time,
 };
 use bevy_replicon::{
-    client::{
-        confirm_history::ConfirmHistory,
-        events::{ClientEventAppExt, FromClient},
-    },
+    client::confirm_history::ConfirmHistory,
     core::{
-        channels::RepliconChannel, common_conditions::has_authority, replication_rules::AppRuleExt,
+        channels::RepliconChannel,
+        common_conditions::{client_connected, has_authority},
+        replication_rules::AppRuleExt,
+        replicon_client::RepliconClient,
     },
+    prelude::{ClientEventAppExt, FromClient},
 };
-use bevy_replicon_renet::renet::{transport::NetcodeClientTransport, RenetClient};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::vec_deque::Iter;
 use std::collections::VecDeque;
@@ -87,12 +87,12 @@ impl<T: Event> PredictedEventHistory<T> {
 
 pub fn owner_prediction_init_system(
     q_owners: Query<(Entity, &NetworkOwner), Added<OwnerPredicted>>,
-    client: Res<NetcodeClientTransport>,
+    client: Res<RepliconClient>,
     mut commands: Commands,
 ) {
-    let client_id = client.client_id();
+    let client_id = client.id().expect("No client id id found");
     for (e, id) in q_owners.iter() {
-        if id.0 == client_id.raw() {
+        if id.0 == client_id.get() {
             commands.entity(e).insert(Predicted);
         } else {
             commands.entity(e).insert(Interpolated);
@@ -203,7 +203,7 @@ impl AppPredictionExt for App {
             Update,
             (
                 server_update_system::<E, T, C>.run_if(has_authority), // Runs only on the server or a single player.
-                predicted_update_system::<E, T, C>.run_if(resource_exists::<RenetClient>), // Runs only on clients.
+                predicted_update_system::<E, T, C>.run_if(client_connected), // Runs only on clients.
             ),
         )
         .replicate::<T>()
