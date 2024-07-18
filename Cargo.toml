@@ -32,7 +32,7 @@ bevy = { version = "0.14", default-features = false, features = [
     "x11",
     "default_font",
 ] }
-bevy_replicon_renet = "0.3.0"
+bevy_replicon_renet = { git = "https://github.com/projectharmonia/bevy_replicon_renet.git", rev = "93f4eb86eda4ee716ea20ab0df9cf282f4084c02" }
 
 [package.metadata.commands]
 example_interpolation = "cargo run --example interpolated -- server & cargo run --example interpolated -- client && fg"

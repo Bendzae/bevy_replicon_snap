@@ -79,7 +79,7 @@ impl SimpleBoxPlugin {
                 commands.spawn(PlayerBundle::new(
                     ClientId::SERVER,
                     Vec2::ZERO,
-                    Color::GREEN,
+                    bevy::color::palettes::css::GREEN.into(),
                 ));
             }
             Cli::Server { port } => {
@@ -118,7 +118,7 @@ impl SimpleBoxPlugin {
                 commands.spawn(PlayerBundle::new(
                     ClientId::SERVER,
                     Vec2::ZERO,
-                    Color::GREEN,
+                    bevy::color::palettes::css::GREEN.into(),
                 ));
             }
             Cli::Client { port, ip } => {
@@ -177,7 +177,7 @@ impl SimpleBoxPlugin {
                     commands.spawn(PlayerBundle::new(
                         *client_id,
                         Vec2::ZERO,
-                        Color::rgb(r, g, b),
+                        Color::srgb(r, g, b),
                     ));
                 }
                 ServerEvent::ClientDisconnected { client_id, reason } => {
