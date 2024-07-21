@@ -18,12 +18,12 @@ use bevy_replicon::{
     bincode,
     core::{
         command_markers::{AppMarkerExt, MarkerConfig},
+        common_conditions::client_connected,
         ctx::{RemoveCtx, WriteCtx},
         replication_registry::rule_fns::RuleFns,
         replication_rules::AppRuleExt,
     },
 };
-use bevy_replicon_renet::renet::RenetClient;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
@@ -168,7 +168,7 @@ impl AppInterpolationExt for App {
             PreUpdate,
             (snapshot_buffer_init_system::<T>.after(owner_prediction_init_system))
                 .in_set(InterpolationSet::Init)
-                .run_if(resource_exists::<RenetClient>),
+                .run_if(client_connected),
         );
         self.add_systems(
             PreUpdate,
@@ -178,7 +178,7 @@ impl AppInterpolationExt for App {
             )
                 .chain()
                 .in_set(InterpolationSet::Interpolate)
-                .run_if(resource_exists::<RenetClient>),
+                .run_if(client_connected),
         )
         .replicate::<T>()
         .register_marker_with::<RecordSnapshotsMarker>(MarkerConfig {
