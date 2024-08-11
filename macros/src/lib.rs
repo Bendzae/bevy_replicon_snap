@@ -31,7 +31,7 @@ pub fn derive_interpolate(input: TokenStream) -> TokenStream {
         _ => panic!("expected a struct"),
     };
     let output = quote! {
-        impl ::bevy_replicon_snap::interpolation::Interpolate for #ident {
+        impl bevy_replicon_snap::interpolation::Interpolate for #ident {
             fn interpolate(&self, other: Self, t: f32) -> Self {
               #body
             }
