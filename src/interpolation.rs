@@ -10,6 +10,7 @@ use bevy::{
         system::{Commands, Query, Res, Resource},
         world::EntityMut,
     },
+    prelude::Transform,
     reflect::Reflect,
     time::Time,
     utils::default,
@@ -33,6 +34,19 @@ use crate::{
 
 pub trait Interpolate {
     fn interpolate(&self, other: Self, t: f32) -> Self;
+}
+
+impl Interpolate for Transform {
+    fn interpolate(&self, other: Self, t: f32) -> Self {
+        let translation = self.translation.lerp(other.translation, t);
+        let rotation = self.rotation.lerp(other.rotation, t);
+        let scale = self.scale.lerp(other.scale, t);
+        Transform {
+            translation,
+            rotation,
+            scale,
+        }
+    }
 }
 
 #[derive(Component, Deserialize, Serialize, Reflect)]
