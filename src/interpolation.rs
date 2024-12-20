@@ -6,23 +6,25 @@ use bevy::{
         component::Component,
         entity::Entity,
         query::{Added, Or, With, Without},
-        schedule::{common_conditions::resource_exists, IntoSystemConfigs},
-        system::{Commands, Query, Res, Resource},
-        world::EntityMut,
+        schedule::IntoSystemConfigs,
+        system::{Commands, Query, Res},
     },
+    prelude::Resource,
     reflect::Reflect,
     time::Time,
     utils::default,
 };
 use bevy_replicon::{
     bincode,
-    core::{
-        command_markers::{AppMarkerExt, MarkerConfig},
-        common_conditions::client_connected,
-        ctx::{RemoveCtx, WriteCtx},
-        replication_registry::rule_fns::RuleFns,
-        replication_rules::AppRuleExt,
+    core::replication::{
+        command_markers::MarkerConfig,
+        deferred_entity::DeferredEntity,
+        replication_registry::{
+            ctx::{RemoveCtx, WriteCtx},
+            rule_fns::RuleFns,
+        },
     },
+    prelude::{client_connected, AppMarkerExt, AppRuleExt},
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
@@ -104,13 +106,13 @@ pub fn snapshot_interpolation_system<T: Component + Interpolate + Clone>(
 
         let tick_duration = 1.0 / (config.max_tick_rate as f32);
 
-        if elapsed > tick_duration + time.delta_seconds() {
+        if elapsed > tick_duration + time.delta_secs() {
             continue;
         }
 
         let t = (elapsed / tick_duration).clamp(0., 1.);
         *component = buffer[0].interpolate(buffer[1].clone(), t);
-        snapshot_buffer.time_since_last_snapshot += time.delta_seconds();
+        snapshot_buffer.time_since_last_snapshot += time.delta_secs();
     }
 }
 
@@ -127,7 +129,7 @@ pub fn snapshot_buffer_init_system<T: Component + Interpolate + Clone>(
 pub fn write_snap_component<C: Clone + Interpolate + Component + DeserializeOwned>(
     ctx: &mut WriteCtx,
     rule_fns: &RuleFns<C>,
-    entity: &mut EntityMut,
+    entity: &mut DeferredEntity,
     cursor: &mut Cursor<&[u8]>,
 ) -> bincode::Result<()> {
     let component: C = rule_fns.deserialize(ctx, cursor)?;
@@ -144,13 +146,14 @@ pub fn write_snap_component<C: Clone + Interpolate + Component + DeserializeOwne
 
 fn remove_snap_component<C: Clone + Interpolate + Component + DeserializeOwned>(
     ctx: &mut RemoveCtx,
-    entity: &mut EntityMut,
+    entity: &mut DeferredEntity,
 ) {
     ctx.commands
         .entity(entity.id())
         .remove::<SnapshotBuffer<C>>()
         .remove::<C>();
 }
+
 pub trait AppInterpolationExt {
     /// Register a component to be replicated and interpolated between server updates
     /// Requires the component to implement the Interpolate trait
@@ -186,7 +189,7 @@ impl AppInterpolationExt for App {
             ..default()
         })
         .set_marker_fns::<RecordSnapshotsMarker, T>(
-            write_snap_component::<T>,
+            write_snap_component,
             remove_snap_component::<T>,
         )
     }

@@ -14,12 +14,10 @@ use bevy::{
 use bevy_replicon::{
     client::confirm_history::ConfirmHistory,
     core::{
-        channels::RepliconChannel,
-        common_conditions::{client_connected, has_authority},
-        replication_rules::AppRuleExt,
+        channels::RepliconChannel, common_conditions::client_connected,
         replicon_client::RepliconClient,
     },
-    prelude::{ClientEventAppExt, FromClient},
+    prelude::{server_or_singleplayer, AppRuleExt, ClientEventAppExt, FromClient},
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::vec_deque::Iter;
@@ -106,7 +104,7 @@ pub fn predicted_snapshot_system<T: Component + Interpolate + Clone>(
     time: Res<Time>,
 ) {
     for mut snapshot_buffer in q.iter_mut() {
-        snapshot_buffer.time_since_last_snapshot += time.delta_seconds();
+        snapshot_buffer.time_since_last_snapshot += time.delta_secs();
     }
 }
 
@@ -123,7 +121,7 @@ pub fn server_update_system<
     for FromClient { client_id, event } in move_events.read() {
         for (player, mut component, context) in &mut subjects {
             if client_id.get() == player.0 {
-                component.apply_event(event, time.delta_seconds(), context);
+                component.apply_event(event, time.delta_secs(), context);
             }
         }
     }
@@ -150,7 +148,7 @@ pub fn predicted_update_system<
             event_history.insert(
                 event.clone(),
                 confirmed.last_tick().get(),
-                time.delta_seconds(),
+                time.delta_secs(),
             );
         }
 
@@ -202,7 +200,7 @@ impl AppPredictionExt for App {
         self.add_systems(
             Update,
             (
-                server_update_system::<E, T, C>.run_if(has_authority), // Runs only on the server or a single player.
+                server_update_system::<E, T, C>.run_if(server_or_singleplayer), // Runs only on the server or a single player.
                 predicted_update_system::<E, T, C>.run_if(client_connected), // Runs only on clients.
             ),
         )
