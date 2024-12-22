@@ -135,7 +135,7 @@ commands.spawn((
 | bevy   | bevy_replicon | bevy_replicon_snap |
 | ------ | ------------- | ------------------ |
 | 0.15.0 | 0.29          | 0.26               |
-| 0.14.0 | 0.27          | 0.25               |
+| 0.14.0 | 0.28          | 0.25               |
 
 ## Alternatives
 
