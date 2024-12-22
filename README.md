@@ -130,6 +130,13 @@ commands.spawn((
 ));
 ```
 
+## Compatitbiliy
+
+| bevy   | bevy_replicon | bevy_replicon_snap |
+| ------ | ------------- | ------------------ |
+| 0.15.0 | 0.29          | 0.26               |
+| 0.14.0 | 0.27          | 0.25               |
+
 ## Alternatives
 
 - [bevy_timewarp](https://github.com/RJ/bevy_timewarp) An awesome

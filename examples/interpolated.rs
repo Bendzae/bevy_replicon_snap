@@ -6,17 +6,16 @@ use std::{
     time::SystemTime,
 };
 
-use bevy::{prelude::*, winit::UpdateMode::Continuous, winit::WinitSettings};
+use bevy::{
+    color::palettes::css::{GREEN, WHITE},
+    prelude::*,
+    winit::{UpdateMode::Continuous, WinitSettings},
+};
 use bevy_replicon::prelude::*;
 use bevy_replicon_renet::{
-    renet::{
-        transport::{
-            ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport,
-            ServerAuthentication, ServerConfig,
-        },
+    netcode::{ClientAuthentication, NetcodeClientTransport, NetcodeServerTransport, ServerAuthentication, ServerConfig}, renet::{
         ConnectionConfig, RenetClient, RenetServer,
-    },
-    RenetChannelsExt, RepliconRenetPlugins,
+    }, RenetChannelsExt, RepliconRenetPlugins
 };
 use bevy_replicon_snap::{
     interpolation::{AppInterpolationExt, Interpolated},
@@ -67,7 +66,7 @@ impl Plugin for SimpleBoxPlugin {
             .add_systems(
                 Update,
                 (
-                    Self::movement_system.run_if(has_authority), // Runs only on the server or a single player.
+                    Self::movement_system.run_if(server_or_singleplayer), // Runs only on the server or a single player.
                     Self::server_event_system.run_if(server_running), // Runs only on the server.
                     (Self::draw_boxes_system, Self::input_system),
                 ),
@@ -86,7 +85,7 @@ impl SimpleBoxPlugin {
                 commands.spawn(PlayerBundle::new(
                     ClientId::SERVER,
                     Vec2::ZERO,
-                    bevy::color::palettes::css::GREEN.into(),
+                    GREEN.into(),
                 ));
             }
             Cli::Server { port } => {
@@ -114,18 +113,18 @@ impl SimpleBoxPlugin {
                 commands.insert_resource(server);
                 commands.insert_resource(transport);
 
-                commands.spawn(TextBundle::from_section(
-                    "Server",
-                    TextStyle {
+                commands.spawn((
+                    Text::new("Server"),
+                    TextFont {
                         font_size: 30.0,
-                        color: Color::WHITE,
                         ..default()
                     },
+                    TextColor(WHITE.into()),
                 ));
                 commands.spawn(PlayerBundle::new(
                     ClientId::SERVER,
                     Vec2::ZERO,
-                    bevy::color::palettes::css::GREEN.into(),
+                    GREEN.into(),
                 ));
             }
             Cli::Client { port, ip } => {
@@ -153,13 +152,13 @@ impl SimpleBoxPlugin {
                 commands.insert_resource(client);
                 commands.insert_resource(transport);
 
-                commands.spawn(TextBundle::from_section(
-                    format!("Client: {client_id:?}"),
-                    TextStyle {
+                commands.spawn((
+                    Text::new(format!("Client: {client_id:?}")),
+                    TextFont {
                         font_size: 30.0,
-                        color: Color::WHITE,
                         ..default()
                     },
+                    TextColor::WHITE,
                 ));
             }
         }
@@ -168,7 +167,7 @@ impl SimpleBoxPlugin {
     }
 
     fn init_system(mut commands: Commands) {
-        commands.spawn(Camera2dBundle::default());
+        commands.spawn(Camera2d);
     }
 
     /// Logs server events and spawns a new player whenever a client connects.
@@ -196,9 +195,8 @@ impl SimpleBoxPlugin {
 
     fn draw_boxes_system(mut gizmos: Gizmos, players: Query<(&PlayerPosition, &PlayerColor)>) {
         for (position, color) in &players {
-            gizmos.rect(
-                Vec3::new(position.x, position.y, 0.0),
-                Quat::IDENTITY,
+            gizmos.rect_2d(
+                Isometry2d::from_xy(position.x, position.y),
                 Vec2::ONE * 50.0,
                 color.0,
             );
@@ -238,7 +236,7 @@ impl SimpleBoxPlugin {
         for FromClient { client_id, event } in move_events.read() {
             for (player, mut position) in &mut players {
                 if client_id.get() == player.0 {
-                    **position += event.0 * time.delta_seconds() * MOVE_SPEED;
+                    **position += event.0 * time.delta_secs() * MOVE_SPEED;
                 }
             }
         }

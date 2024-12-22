@@ -1,7 +1,7 @@
 on:
   push:
     tags:
-      - '*'
+      - "*"
 
 name: Publish
 
@@ -13,9 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
-
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt install libudev-dev
+          sudo apt install libasound2-dev
       - uses: taiki-e/install-action@nextest
-      - name: 'Build and test'
+      - name: "Build and test"
         run: cargo nextest run --workspace --all-targets --all-features
 
   crates_io_publish:
